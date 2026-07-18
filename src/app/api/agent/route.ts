@@ -8,11 +8,10 @@ import { PublicKey } from "@solana/web3.js";
 import type { Mode } from "@/lib/types";
 import { getConnection } from "@/lib/solana/connection";
 import { createTools, modeExecutes } from "@/lib/agent/tools";
+import { resolveModel, hasModelCredential } from "@/lib/agent/model";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const MODEL = "anthropic/claude-opus-4-8";
 
 function systemPrompt(mode: Mode): string {
   const modeLine = modeExecutes(mode)
@@ -60,11 +59,11 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid owner public key." }, { status: 400 });
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!hasModelCredential()) {
     return Response.json(
       {
         error:
-          "AI_GATEWAY_API_KEY is not set. Add it to .env.local to enable the agent (see .env.example).",
+          "No model credential set. Add GOOGLE_GENERATIVE_AI_API_KEY (free, no card), GROQ_API_KEY (free, no card), or AI_GATEWAY_API_KEY to .env.local. See .env.example.",
       },
       { status: 500 }
     );
@@ -73,9 +72,10 @@ export async function POST(req: Request) {
   const connection = getConnection(mode);
   const tools = createTools({ connection, mode, owner });
   const modelMessages = await convertToModelMessages(messages);
+  const { model } = resolveModel();
 
   const result = streamText({
-    model: MODEL,
+    model,
     system: systemPrompt(mode),
     messages: modelMessages,
     tools,
