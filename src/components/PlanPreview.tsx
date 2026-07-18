@@ -1,26 +1,28 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
-import type { Plan, AssetDelta, GuardrailCheck } from "@/lib/types";
-import { formatSigned, formatUsd, formatSol, pct, shortAddr } from "@/lib/format";
+import type { Plan, AssetDelta, GuardrailCheck, BtcIo } from "@/lib/types";
+import { formatSigned, formatUsd, formatUi, pct, shortAddr } from "@/lib/format";
+import { useWalletChat } from "./WalletProviders";
+import { sendEvmTx, getEthereum } from "@/lib/wallet/evm";
+import { signAndPushPsbt, getUnisat } from "@/lib/wallet/btc";
 
-/** Browser-native base64 → bytes (no Buffer dependency in client code). */
+/**
+ * THE signature element. Makes the risk of a transaction legible at a glance and
+ * gates the confirm affordance on `plan.signable`. Immediately before signing we
+ * re-simulate against fresh state. Signing is chain-specific and always
+ * client-side: Solana via wallet-adapter, Ethereum via MetaMask, Bitcoin via
+ * Unisat. The server never signs.
+ */
+
 function b64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
-
-/**
- * THE signature element. Makes the risk of a transaction legible at a glance:
- * the route as connected token pills, signed deltas with motion, fees, price
- * impact, and every guardrail as a visible check. The confirm affordance is
- * bound to `plan.signable` and nothing else — and immediately before signing we
- * re-simulate against fresh chain state so we never sign a stale plan.
- */
 
 type SignState =
   | { s: "idle" }
@@ -34,25 +36,39 @@ type SignState =
 export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
   const { connection } = useConnection();
   const { publicKey, signTransaction } = useWallet();
+  const { evmAddress, btcAddress } = useWalletChat();
   const [plan, setPlan] = useState<Plan>(initialPlan);
   const [typed, setTyped] = useState("");
   const [state, setState] = useState<SignState>({ s: "idle" });
 
   const needsTyped = plan.guardrail.typedConfirmation;
-  const typedOk = !needsTyped || typed.trim().toLowerCase() === needsTyped.toLowerCase();
-  const walletMatches = publicKey?.toBase58() === plan.owner;
+  const typedOk =
+    !needsTyped || typed.trim().toLowerCase() === needsTyped.toLowerCase();
+
+  const walletMatches =
+    plan.chain === "solana"
+      ? publicKey?.toBase58() === plan.owner
+      : plan.chain === "ethereum"
+        ? evmAddress?.toLowerCase() === plan.owner.toLowerCase()
+        : btcAddress === plan.owner;
+
+  const hasSigner =
+    plan.chain === "solana"
+      ? !!signTransaction
+      : plan.chain === "ethereum"
+        ? !!getEthereum()
+        : !!getUnisat();
 
   const canConfirm =
     plan.signable &&
     typedOk &&
-    !!signTransaction &&
+    hasSigner &&
     walletMatches &&
     (state.s === "idle" || state.s === "drift" || state.s === "error");
 
   async function onConfirm() {
-    if (!signTransaction || !publicKey) return;
     try {
-      // 1) Drift defense: re-simulate against fresh state right now.
+      // 1) Drift defense — re-simulate/rebuild against fresh state.
       setState({ s: "resimulating" });
       const res = await fetch("/api/resim", {
         method: "POST",
@@ -70,25 +86,37 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
         setState({
           s: "drift",
           message:
-            "Chain state moved — this plan is no longer safe to sign. Review the updated preview and ask again.",
+            "State moved — this plan is no longer safe to sign. Review the updated preview and ask again.",
         });
         return;
       }
 
-      // 2) Sign locally. The secret key never leaves the wallet.
+      // 2) Sign + submit, per chain. Keys never leave the wallet.
       setState({ s: "signing" });
-      const tx = VersionedTransaction.deserialize(b64ToBytes(fresh.transactionBase64));
-      const signed = await signTransaction(tx);
-
-      // 3) Submit.
-      setState({ s: "sending" });
-      const sig = await connection.sendRawTransaction(signed.serialize(), {
-        skipPreflight: false,
-        maxRetries: 3,
-      });
-      const bh = await connection.getLatestBlockhash("confirmed");
-      await connection.confirmTransaction({ signature: sig, ...bh }, "confirmed");
-      setState({ s: "confirmed", signature: sig });
+      let signature: string;
+      if (fresh.chain === "solana") {
+        if (!signTransaction || !fresh.transactionBase64)
+          throw new Error("Solana wallet unavailable.");
+        const tx = VersionedTransaction.deserialize(
+          b64ToBytes(fresh.transactionBase64)
+        );
+        const signed = await signTransaction(tx);
+        setState({ s: "sending" });
+        signature = await connection.sendRawTransaction(signed.serialize(), {
+          maxRetries: 3,
+        });
+        const bh = await connection.getLatestBlockhash("confirmed");
+        await connection.confirmTransaction({ signature, ...bh }, "confirmed");
+      } else if (fresh.chain === "ethereum") {
+        if (!fresh.evmTx) throw new Error("Missing EVM transaction.");
+        setState({ s: "sending" });
+        signature = await sendEvmTx(fresh.evmTx, fresh.mode);
+      } else {
+        if (!fresh.btc) throw new Error("Missing Bitcoin PSBT.");
+        setState({ s: "sending" });
+        signature = await signAndPushPsbt(fresh.btc.psbtBase64);
+      }
+      setState({ s: "confirmed", signature });
     } catch (e) {
       setState({ s: "error", message: (e as Error).message });
     }
@@ -100,7 +128,6 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
   return (
     <div className="animate-fade-up rounded-2xl border border-hairline bg-surface/80 backdrop-blur-sm overflow-hidden">
       <Header plan={plan} />
-
       {plan.route && <RouteStrip plan={plan} />}
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
@@ -117,6 +144,8 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
           ))}
         </section>
 
+        {plan.btc && <BtcIoStrip inputs={plan.btc.inputs} outputs={plan.btc.outputs} />}
+
         <FeeRow plan={plan} />
 
         <Guardrails checks={plan.guardrail.checks} pass={plan.guardrail.pass} />
@@ -132,7 +161,7 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
           </ul>
         )}
 
-        {!plan.simulation.success && (
+        {!plan.simulation.success && plan.chain !== "bitcoin" && (
           <SimLogs logs={plan.simulation.logs} err={plan.simulation.err} />
         )}
 
@@ -144,8 +173,7 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
           typed={typed}
           setTyped={setTyped}
           typedOk={typedOk}
-          walletConnected={!!publicKey}
-          walletMatches={walletMatches}
+          walletConnected={hasSigner && walletMatches}
           onConfirm={onConfirm}
         />
       </div>
@@ -163,9 +191,8 @@ function Header({ plan }: { plan: Plan }) {
         <div className="text-[11px] text-faint mt-0.5 num">plan {plan.id}</div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        <Badge tone={plan.mode === "devnet" ? "accent" : "muted"}>
-          {plan.mode}
-        </Badge>
+        <Badge tone="ink">{plan.chain}</Badge>
+        <Badge tone={plan.mode === "devnet" ? "accent" : "muted"}>{plan.mode}</Badge>
         <Badge tone="muted">{plan.kind}</Badge>
       </div>
     </div>
@@ -184,9 +211,7 @@ function RouteStrip({ plan }: { plan: Plan }) {
               {t.symbol}
             </span>
             {i < r.steps.length - 1 && (
-              <span className="text-faint text-xs" aria-hidden>
-                →
-              </span>
+              <span className="text-faint text-xs" aria-hidden>→</span>
             )}
           </React.Fragment>
         ))}
@@ -245,29 +270,60 @@ function DeltaRow({ d, index }: { d: AssetDelta; index: number }) {
   );
 }
 
+function BtcIoStrip({ inputs, outputs }: { inputs: BtcIo[]; outputs: BtcIo[] }) {
+  return (
+    <section className="rounded-xl border border-hairline overflow-hidden text-[11px]">
+      <div className="grid grid-cols-2 divide-x divide-hairline">
+        <div className="p-3">
+          <Label>Inputs ({inputs.length} UTXO)</Label>
+          <ul className="mt-1.5 space-y-1">
+            {inputs.map((i, n) => (
+              <li key={n} className="flex justify-between gap-2">
+                <span className="text-faint num">{shortAddr(i.address, 5)}</span>
+                <span className="num text-ink/80">{formatUi(i.valueSat / 1e8)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="p-3">
+          <Label>Outputs</Label>
+          <ul className="mt-1.5 space-y-1">
+            {outputs.map((o, n) => (
+              <li key={n} className="flex justify-between gap-2">
+                <span className="text-faint num flex items-center gap-1">
+                  {shortAddr(o.address, 5)}
+                  {o.isChange && <span className="text-[9px] text-accent">change</span>}
+                </span>
+                <span className="num text-ink/80">{formatUi(o.valueSat / 1e8)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function FeeRow({ plan }: { plan: Plan }) {
   const f = plan.fee;
+  const toNative = (n: number) => formatUi(n / 10 ** plan.nativeDecimals, 8);
   return (
     <div className="flex items-center justify-between text-[11px] text-muted border-t border-hairline pt-3">
-      <span>Network fee + rent</span>
+      <span>{plan.chain === "bitcoin" ? "Network fee" : "Network fee + rent"}</span>
       <span className="num text-ink/80">
-        {formatSol(f.totalLamports)} SOL
-        <span className="text-faint">
-          {"  "}({formatSol(f.baseLamports + f.priorityLamports)} fee
-          {f.rentLamports > 0 ? ` + ${formatSol(f.rentLamports)} rent` : ""})
-        </span>
+        {toNative(f.totalLamports)} {plan.nativeSymbol}
+        {f.rentLamports > 0 && (
+          <span className="text-faint">
+            {"  "}({toNative(f.baseLamports + f.priorityLamports)} fee +{" "}
+            {toNative(f.rentLamports)} rent)
+          </span>
+        )}
       </span>
     </div>
   );
 }
 
-function Guardrails({
-  checks,
-  pass,
-}: {
-  checks: GuardrailCheck[];
-  pass: boolean;
-}) {
+function Guardrails({ checks, pass }: { checks: GuardrailCheck[]; pass: boolean }) {
   return (
     <section className="rounded-xl border border-hairline overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-raised/50">
@@ -296,8 +352,7 @@ function CheckIcon({
   passed: boolean;
   severity: "block" | "warn";
 }) {
-  if (passed)
-    return <span className="text-pos text-xs mt-0.5" aria-label="passed">✓</span>;
+  if (passed) return <span className="text-pos text-xs mt-0.5" aria-label="passed">✓</span>;
   if (severity === "warn")
     return <span className="text-warn text-xs mt-0.5" aria-label="warning">▲</span>;
   return <span className="text-neg text-xs mt-0.5" aria-label="blocked">✕</span>;
@@ -318,6 +373,13 @@ function SimLogs({ logs, err }: { logs: string[]; err: unknown }) {
   );
 }
 
+const EXPLORER: Record<string, (sig: string, mainnet: boolean) => string> = {
+  solana: (s, m) =>
+    `https://explorer.solana.com/tx/${s}?cluster=${m ? "mainnet-beta" : "devnet"}`,
+  ethereum: (s, m) => `https://${m ? "" : "sepolia."}etherscan.io/tx/${s}`,
+  bitcoin: (s, m) => `https://mempool.space/${m ? "" : "testnet4/"}tx/${s}`,
+};
+
 function ConfirmZone({
   plan,
   state,
@@ -327,7 +389,6 @@ function ConfirmZone({
   setTyped,
   typedOk,
   walletConnected,
-  walletMatches,
   onConfirm,
 }: {
   plan: Plan;
@@ -338,14 +399,15 @@ function ConfirmZone({
   setTyped: (v: string) => void;
   typedOk: boolean;
   walletConnected: boolean;
-  walletMatches: boolean;
   onConfirm: () => void;
 }) {
   if (state.s === "confirmed") {
-    const url = `https://explorer.solana.com/tx/${state.signature}?cluster=${plan.mode}`;
+    const url = EXPLORER[plan.chain](state.signature, plan.mode === "mainnet");
     return (
       <div className="rounded-xl border border-pos/30 bg-pos/5 px-4 py-3 animate-fade-up">
-        <div className="text-sm text-pos font-medium">Executed on {plan.mode}</div>
+        <div className="text-sm text-pos font-medium">
+          Broadcast on {plan.chain} {plan.mode}
+        </div>
         <a
           href={url}
           target="_blank"
@@ -358,7 +420,7 @@ function ConfirmZone({
     );
   }
 
-  const reason = disabledReason(plan, walletConnected, walletMatches, typedOk, needsTyped);
+  const reason = disabledReason(plan, walletConnected, typedOk, needsTyped);
   const busy =
     state.s === "resimulating" || state.s === "signing" || state.s === "sending";
 
@@ -367,8 +429,7 @@ function ConfirmZone({
       {needsTyped && plan.signable && (
         <label className="block">
           <span className="text-[11px] text-muted">
-            High value — type{" "}
-            <span className="num text-ink">“{needsTyped}”</span> to enable:
+            High value — type <span className="num text-ink">“{needsTyped}”</span> to enable:
           </span>
           <input
             value={typed}
@@ -389,19 +450,11 @@ function ConfirmZone({
             : "bg-raised text-faint cursor-not-allowed"
         }`}
       >
-        {busy
-          ? busyLabel(state)
-          : plan.signable
-            ? `Confirm & sign`
-            : "Signing disabled"}
+        {busy ? busyLabel(state) : plan.signable ? "Confirm & sign" : "Signing disabled"}
       </button>
 
-      {state.s === "drift" && (
-        <p className="text-xs text-warn">{state.message}</p>
-      )}
-      {state.s === "error" && (
-        <p className="text-xs text-neg break-words">{state.message}</p>
-      )}
+      {state.s === "drift" && <p className="text-xs text-warn">{state.message}</p>}
+      {state.s === "error" && <p className="text-xs text-neg break-words">{state.message}</p>}
       {!plan.signable && reason && (
         <p className="text-[11px] text-faint text-center">{reason}</p>
       )}
@@ -412,7 +465,7 @@ function ConfirmZone({
 function busyLabel(state: SignState): string {
   switch (state.s) {
     case "resimulating":
-      return "Re-simulating…";
+      return "Re-checking…";
     case "signing":
       return "Awaiting signature…";
     case "sending":
@@ -425,26 +478,22 @@ function busyLabel(state: SignState): string {
 function disabledReason(
   plan: Plan,
   walletConnected: boolean,
-  walletMatches: boolean,
   typedOk: boolean,
   needsTyped: string | null
 ): string | null {
   if (plan.mode === "mainnet")
     return "Mainnet is read-only in this demo — the plan and diff are real, signing is off.";
-  if (!plan.simulation.success) return "Simulation failed, so this cannot be signed.";
+  if (!plan.simulation.success && plan.chain !== "bitcoin")
+    return "Simulation failed, so this cannot be signed.";
   if (!plan.guardrail.pass) return "A guardrail is blocking this plan.";
-  if (!walletConnected) return "Connect your wallet to sign.";
-  if (!walletMatches) return "Connected wallet differs from the plan's owner.";
+  if (!walletConnected) return "Connect the matching wallet to sign.";
   if (needsTyped && !typedOk) return "Type the confirmation phrase to continue.";
   return null;
 }
 
-// ── small primitives ─────────────────────────────────────────────────────────
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] uppercase tracking-wider text-faint">
-      {children}
-    </span>
+    <span className="text-[10px] uppercase tracking-wider text-faint">{children}</span>
   );
 }
 
@@ -453,18 +502,18 @@ function Badge({
   tone,
 }: {
   children: React.ReactNode;
-  tone: "accent" | "muted" | "neg";
+  tone: "accent" | "muted" | "neg" | "ink";
 }) {
   const cls =
     tone === "accent"
       ? "border-accent/40 text-accent"
       : tone === "neg"
         ? "border-neg/40 text-neg"
-        : "border-hairline text-muted";
+        : tone === "ink"
+          ? "border-hairline text-ink/80"
+          : "border-hairline text-muted";
   return (
-    <span
-      className={`text-[10px] uppercase tracking-wide rounded-full border px-2 py-0.5 ${cls}`}
-    >
+    <span className={`text-[10px] uppercase tracking-wide rounded-full border px-2 py-0.5 ${cls}`}>
       {children}
     </span>
   );

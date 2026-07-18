@@ -69,6 +69,9 @@ export interface PolicyConfig {
   largeValueLamports: number;
   /** Maximum quote age before signing is blocked (ms). */
   quoteMaxAgeMs: number;
+  /** Native asset display symbol/decimals for the cap & confirmation messages. */
+  nativeSymbol: string;
+  nativeDecimals: number;
 }
 
 export const DEFAULT_POLICY: PolicyConfig = {
@@ -81,6 +84,8 @@ export const DEFAULT_POLICY: PolicyConfig = {
   largeValueUsd: 250,
   largeValueLamports: 2 * 1_000_000_000, // 2 SOL
   quoteMaxAgeMs: 30_000,
+  nativeSymbol: "SOL",
+  nativeDecimals: 9,
 };
 
 export interface PolicyDiffEntry {
@@ -133,8 +138,8 @@ function computeOutflow(diff: PolicyDiffEntry[]): {
   return { usd: sawUsd ? usd : null, lamports, anyUnpriced };
 }
 
-function fmtSol(lamports: bigint): string {
-  return (Number(lamports) / 1e9).toFixed(4).replace(/\.?0+$/, "");
+function fmtNative(units: bigint, decimals: number): string {
+  return (Number(units) / 10 ** decimals).toFixed(4).replace(/\.?0+$/, "");
 }
 
 export function evaluateGuardrails(input: PolicyInput): GuardrailReport {
@@ -179,12 +184,14 @@ export function evaluateGuardrails(input: PolicyInput): GuardrailReport {
     detail: usdOverCap
       ? `Blocked: outflow ~$${outflow.usd!.toFixed(2)} exceeds cap $${cfg.maxNotionalUsd}.`
       : solOverCap
-        ? `Blocked: outflow ${fmtSol(outflow.lamports)} SOL exceeds cap ${fmtSol(
-            BigInt(cfg.maxSolLamports)
-          )} SOL.`
-        : `Outflow within cap ($${cfg.maxNotionalUsd} / ${fmtSol(
-            BigInt(cfg.maxSolLamports)
-          )} SOL).`,
+        ? `Blocked: outflow ${fmtNative(outflow.lamports, cfg.nativeDecimals)} ${cfg.nativeSymbol} exceeds cap ${fmtNative(
+            BigInt(cfg.maxSolLamports),
+            cfg.nativeDecimals
+          )} ${cfg.nativeSymbol}.`
+        : `Outflow within cap ($${cfg.maxNotionalUsd} / ${fmtNative(
+            BigInt(cfg.maxSolLamports),
+            cfg.nativeDecimals
+          )} ${cfg.nativeSymbol}).`,
   });
 
   // 4) slippage ceiling (swaps only).
@@ -269,7 +276,7 @@ export function evaluateGuardrails(input: PolicyInput): GuardrailReport {
       outflow.usd == null &&
       outflow.lamports >= BigInt(cfg.largeValueLamports)
     ) {
-      typedConfirmation = `send ${fmtSol(outflow.lamports)} SOL`;
+      typedConfirmation = `send ${fmtNative(outflow.lamports, cfg.nativeDecimals)} ${cfg.nativeSymbol}`;
     }
   }
 

@@ -15,6 +15,13 @@
 
 export type Mode = "devnet" | "mainnet";
 
+/**
+ * The chains WalletChat understands. `mode` is the network TIER: "devnet" means
+ * the executable test tier for the active chain (Solana devnet, Ethereum
+ * Sepolia, Bitcoin testnet), "mainnet" is real and read-only in this showcase.
+ */
+export type Chain = "solana" | "ethereum" | "bitcoin";
+
 export type PlanKind = "transfer" | "swap" | "wrap" | "unwrap" | "stake" | "unknown";
 
 /** One asset's exact change, decoded from simulated post-state vs live pre-state. */
@@ -106,17 +113,63 @@ export interface GuardrailReport {
   typedConfirmation: string | null;
 }
 
+/** Unsigned EVM transaction request the client signs via its browser wallet. */
+export interface EvmTxRequest {
+  chainId: number;
+  from: string;
+  to: string;
+  /** Calldata, 0x-prefixed hex. "0x" for a plain native transfer. */
+  data: string;
+  /** Value in wei, decimal string. */
+  value: string;
+  /** Gas limit, decimal string. */
+  gas: string;
+  /** EIP-1559 fees, decimal strings (wei). */
+  maxFeePerGas: string;
+  maxPriorityFeePerGas: string;
+}
+
+export interface BtcIo {
+  address: string;
+  valueSat: number;
+  /** For outputs: true if this is change back to the sender. */
+  isChange?: boolean;
+}
+
+/**
+ * Bitcoin plan payload. NOTE: Bitcoin is the "lighter" path — UTXO chains have
+ * no on-chain simulation or DEX, so there is no exact post-state diff here. We
+ * build a real PSBT and preview exactly which UTXOs go in and which outputs
+ * come out, with the fee. Honest about what it is; see DECISION_LOG.
+ */
+export interface BtcPayload {
+  psbtBase64: string;
+  inputs: BtcIo[];
+  outputs: BtcIo[];
+  feeSat: number;
+  feeRateSatVb: number;
+}
+
 export interface Plan {
   id: string;
   createdAt: number;
   mode: Mode;
+  /** Which chain this plan targets. Defaults to solana for back-compat. */
+  chain: Chain;
+  /** Native asset display info for this chain (SOL/ETH/BTC). */
+  nativeSymbol: string;
+  nativeDecimals: number;
   kind: PlanKind;
   /** One-line human summary of what this does. Rendered, never parsed. */
   intentSummary: string;
   /** The wallet this plan is for. */
   owner: string;
-  /** Unsigned, base64-encoded VersionedTransaction the client will sign. */
-  transactionBase64: string;
+  /** Solana: unsigned base64 VersionedTransaction. Null on non-Solana plans. */
+  transactionBase64: string | null;
+  /** Ethereum: unsigned tx request. Null on non-EVM plans. */
+  evmTx: EvmTxRequest | null;
+  /** Bitcoin: PSBT + in/out preview. Null on non-BTC plans. */
+  btc: BtcPayload | null;
   simulation: SimulationResult;
   diff: AssetDelta[];
   fee: FeeBreakdown;

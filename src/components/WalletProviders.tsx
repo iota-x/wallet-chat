@@ -1,14 +1,27 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { Buffer } from "buffer";
-import type { Mode } from "@/lib/types";
+import type { Chain, Mode } from "@/lib/types";
 import { rpcEndpoint } from "@/lib/solana/constants";
+import {
+  connectEvm as evmConnect,
+  getEvmAccount,
+  getEthereum,
+} from "@/lib/wallet/evm";
+import { connectBtc as btcConnect, getBtcAccount } from "@/lib/wallet/btc";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 // @solana/web3.js expects a Buffer global in the browser.
@@ -17,16 +30,22 @@ if (typeof window !== "undefined") {
   if (!w.Buffer) w.Buffer = Buffer;
 }
 
-/** App-wide mode (devnet / mainnet). Drives both the RPC and the agent body. */
-interface ModeCtx {
+interface WalletChatCtx {
+  chain: Chain;
+  setChain: (c: Chain) => void;
   mode: Mode;
   setMode: (m: Mode) => void;
+  evmAddress: string | null;
+  connectEvm: () => Promise<void>;
+  btcAddress: string | null;
+  connectBtc: () => Promise<void>;
 }
-const ModeContext = createContext<ModeCtx | null>(null);
 
-export function useMode(): ModeCtx {
-  const ctx = useContext(ModeContext);
-  if (!ctx) throw new Error("useMode must be used within WalletProviders");
+const Ctx = createContext<WalletChatCtx | null>(null);
+
+export function useWalletChat(): WalletChatCtx {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("useWalletChat must be used within WalletProviders");
   return ctx;
 }
 
@@ -36,19 +55,53 @@ const DEFAULT_MODE: Mode =
     : "devnet";
 
 export function WalletProviders({ children }: { children: React.ReactNode }) {
+  const [chain, setChain] = useState<Chain>("solana");
   const [mode, setMode] = useState<Mode>(DEFAULT_MODE);
-  const endpoint = useMemo(() => rpcEndpoint(mode), [mode]);
+  const [evmAddress, setEvmAddress] = useState<string | null>(null);
+  const [btcAddress, setBtcAddress] = useState<string | null>(null);
 
-  // Empty adapter list → Wallet Standard auto-detection (Phantom, Solflare, …).
+  // Solana connection follows the tier; only used when chain === "solana".
+  const endpoint = useMemo(() => rpcEndpoint(mode), [mode]);
   const wallets = useMemo(() => [], []);
 
+  const connectEvm = useCallback(async () => {
+    const a = await evmConnect();
+    setEvmAddress(a);
+  }, []);
+  const connectBtc = useCallback(async () => {
+    const a = await btcConnect();
+    setBtcAddress(a);
+  }, []);
+
+  // Re-hydrate already-authorized EVM/BTC accounts + watch for account changes.
+  useEffect(() => {
+    getEvmAccount().then((a) => a && setEvmAddress(a));
+    getBtcAccount().then((a) => a && setBtcAddress(a));
+    const eth = getEthereum();
+    eth?.on?.("accountsChanged", (...args: unknown[]) => {
+      const accts = args[0] as string[];
+      setEvmAddress(accts?.[0] ?? null);
+    });
+  }, []);
+
+  const value: WalletChatCtx = {
+    chain,
+    setChain,
+    mode,
+    setMode,
+    evmAddress,
+    connectEvm,
+    btcAddress,
+    connectBtc,
+  };
+
   return (
-    <ModeContext.Provider value={{ mode, setMode }}>
+    <Ctx.Provider value={value}>
       <ConnectionProvider endpoint={endpoint} config={{ commitment: "confirmed" }}>
         <WalletProvider wallets={wallets} autoConnect>
           <WalletModalProvider>{children}</WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>
-    </ModeContext.Provider>
+    </Ctx.Provider>
   );
 }

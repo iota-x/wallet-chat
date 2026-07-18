@@ -3,18 +3,31 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { useWallet } from "@solana/wallet-adapter-react";
-import type { Plan } from "@/lib/types";
-import { useMode } from "./WalletProviders";
+import type { Chain, Plan } from "@/lib/types";
+import { useWalletChat } from "./WalletProviders";
+import { useActiveOwner } from "./wallet-hooks";
 import { PlanPreview } from "./PlanPreview";
 import { Balances } from "./Balances";
 
-const SUGGESTIONS = [
-  "What's in my wallet?",
-  "Move half my USDC into a JitoSOL position",
-  "Swap 0.1 SOL to USDC",
-  "Send 0.05 SOL to <address>",
-];
+const SUGGESTIONS: Record<Chain, string[]> = {
+  solana: [
+    "What's in my wallet?",
+    "Move half my USDC into a JitoSOL position",
+    "Swap 0.1 SOL to USDC",
+    "Send 0.05 SOL to <address>",
+  ],
+  ethereum: [
+    "What's in my wallet?",
+    "Swap 0.05 ETH into WBTC",
+    "Send 0.01 ETH to <0x address>",
+    "Move half my USDC to <0x address>",
+  ],
+  bitcoin: [
+    "What's my balance?",
+    "Send 0.001 BTC to <bc1… address>",
+    "Send 5000 sats to <address> with fastest fee",
+  ],
+};
 
 function isPlan(v: unknown): v is Plan {
   return (
@@ -27,20 +40,23 @@ function isPlan(v: unknown): v is Plan {
 }
 
 export function Chat() {
-  const { mode } = useMode();
-  const { publicKey } = useWallet();
-  const owner = publicKey?.toBase58();
+  const { chain, mode } = useWalletChat();
+  const owner = useActiveOwner() ?? undefined;
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/agent",
-        body: { mode, owner },
+        body: { chain, mode, owner },
       }),
-    [mode, owner]
+    [chain, mode, owner]
   );
 
-  const { messages, sendMessage, status, error } = useChat({ transport });
+  // Key the chat by chain+owner so switching chains starts a clean thread.
+  const { messages, sendMessage, status, error } = useChat({
+    id: `${chain}:${owner ?? "none"}`,
+    transport,
+  });
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +84,7 @@ export function Chat() {
         className="flex-1 overflow-y-auto px-3 sm:px-0 py-4 space-y-4"
       >
         {messages.length === 0 ? (
-          <EmptyState disabled={disabled} onPick={submit} />
+          <EmptyState disabled={disabled} onPick={submit} suggestions={SUGGESTIONS[chain]} />
         ) : (
           messages.map((m) => <MessageBlock key={m.id} message={m} />)
         )}
@@ -240,9 +256,11 @@ function Thinking() {
 function EmptyState({
   disabled,
   onPick,
+  suggestions,
 }: {
   disabled: boolean;
   onPick: (t: string) => void;
+  suggestions: string[];
 }) {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center px-6 py-12 gap-6">
@@ -257,7 +275,7 @@ function EmptyState({
         </p>
       </div>
       <div className="flex flex-wrap gap-2 justify-center max-w-lg">
-        {SUGGESTIONS.map((s) => (
+        {suggestions.map((s) => (
           <button
             key={s}
             onClick={() => onPick(s)}

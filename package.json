@@ -11,12 +11,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "proof": "tsx scripts/prove-diff-decode.ts",
-    "verify:plan": "tsx scripts/verify-plan.ts"
+    "verify:plan": "tsx scripts/verify-plan.ts",
+    "proof:evm": "tsx scripts/prove-evm-diff.ts",
+    "verify:evm": "tsx scripts/verify-evm-plan.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.95",
     "@ai-sdk/groq": "^3.0.53",
     "@ai-sdk/react": "^3.0.230",
+    "@bitcoinerlab/secp256k1": "^1.2.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-react": "^0.15.35",
@@ -24,10 +27,12 @@
     "@solana/wallet-adapter-wallets": "^0.19.32",
     "@solana/web3.js": "^1.95.4",
     "ai": "^6.0.230",
+    "bitcoinjs-lib": "^6.1.7",
     "buffer": "^6.0.3",
     "next": "15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "viem": "^2.55.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {

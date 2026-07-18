@@ -118,10 +118,15 @@ export async function assemblePlan(params: AssembleParams): Promise<Plan> {
     id: planId(),
     createdAt: Date.now(),
     mode,
+    chain: "solana",
+    nativeSymbol: "SOL",
+    nativeDecimals: 9,
     kind,
     intentSummary,
     owner: owner.toBase58(),
     transactionBase64: Buffer.from(tx.serialize()).toString("base64"),
+    evmTx: null,
+    btc: null,
     simulation,
     diff,
     fee,
@@ -144,6 +149,9 @@ export async function resimulatePlan(
   connection: Connection,
   plan: Plan
 ): Promise<Plan> {
+  if (plan.chain !== "solana" || !plan.transactionBase64) {
+    throw new Error("resimulatePlan only handles Solana plans.");
+  }
   const tx = VersionedTransaction.deserialize(
     Uint8Array.from(Buffer.from(plan.transactionBase64, "base64"))
   );

@@ -1,9 +1,19 @@
 # WalletChat
 
-A natural-language agent over a Solana wallet. State an intent in plain English —
-_"move half my USDC into a JitoSOL position"_ — and the agent **plans** it, **simulates** it
-against live chain state, and shows a **legible risk/diff preview**. Nothing signs until hard
-guardrails pass and you click confirm. Signing is client-side only; the server never sees a key.
+A natural-language agent over your crypto wallet — **Solana, Ethereum, and Bitcoin**. State an
+intent in plain English — _"move half my USDC into a JitoSOL position"_, _"swap 0.05 ETH into
+WBTC"_, _"send 0.001 BTC to bc1…"_ — and the agent **plans** it, **simulates** it against live
+chain state, and shows a **legible risk/diff preview**. Nothing signs until hard guardrails pass
+and you click confirm. Signing is client-side only; the server never sees a key.
+
+**Chains**
+- **Solana** — full pipeline: simulate + exact balance-diff decode, transfers, Jupiter swaps.
+  Devnet executes end-to-end; mainnet read-only.
+- **Ethereum** — full pipeline: `eth_simulateV1` + exact diff decode (Multicall3 post-state read),
+  ETH/ERC-20 transfers, KyberSwap swaps, MetaMask signing. Sepolia executes; mainnet read-only.
+- **Bitcoin** — lighter by nature (UTXO chains have no simulation or DEX): real PSBT build with
+  coin selection, fee estimate, and exact input/output preview, Unisat signing. Honest about the
+  weaker guarantees — see [`DECISION_LOG.md`](./DECISION_LOG.md).
 
 > The safety architecture is the point. See [`DECISION_LOG.md`](./DECISION_LOG.md) for the threat
 > model, the delegated design decisions, and the proof-of-correctness output.
@@ -54,9 +64,14 @@ cp .env.example .env.local     # then fill in the values below
 
 - `AI_GATEWAY_API_KEY` — a [Vercel AI Gateway](https://vercel.com/ai-gateway) key. Routes the
   `anthropic/claude-opus-4-8` model. Required for the chat agent (not for the proof scripts).
-- `NEXT_PUBLIC_DEVNET_RPC` / `NEXT_PUBLIC_MAINNET_RPC` — RPC URLs. Public endpoints work but
-  rate-limit hard; a Helius/Triton/QuickNode URL is strongly recommended.
-- `NEXT_PUBLIC_DEFAULT_MODE` — `devnet` (default) or `mainnet`.
+- `NEXT_PUBLIC_DEVNET_RPC` / `NEXT_PUBLIC_MAINNET_RPC` — Solana RPC URLs. Public endpoints work
+  but rate-limit hard; a Helius/Triton/QuickNode URL is strongly recommended.
+- `NEXT_PUBLIC_ETH_SEPOLIA_RPC` / `NEXT_PUBLIC_ETH_MAINNET_RPC` — Ethereum RPC URLs. Must support
+  `eth_simulateV1` (publicnode defaults do; Alchemy/Infura also work).
+- `NEXT_PUBLIC_DEFAULT_MODE` — `devnet` (default, = the executable test tier) or `mainnet`.
+
+Wallets by chain: **Solana** → Phantom/Solflare (wallet-adapter); **Ethereum** → MetaMask;
+**Bitcoin** → Unisat. Bitcoin/EVM prices come from DeFiLlama (keyless); Solana from Jupiter.
 
 ## Run
 
@@ -70,9 +85,11 @@ flow re-simulates, signs in your wallet, submits, and links the transaction on E
 ## Verify (this is where the claims are backed up)
 
 ```bash
-npm test           # 24 unit tests: guardrail policy + offline token-layout decode
-npm run proof      # ★ devnet: asserts the balance-diff decode is exact to the lamport
-npm run verify:plan  # runs the full plan pipeline on devnet (transfer) + mainnet (read-only swap)
+npm test            # 24 unit tests: guardrail policy + offline token-layout decode
+npm run proof       # ★ Solana devnet: balance-diff decode is exact to the lamport
+npm run proof:evm   # ★ Ethereum Sepolia: EVM diff decode is exact, gas folded into ETH delta
+npm run verify:plan # full Solana plan pipeline (devnet transfer + mainnet read-only swap)
+npm run verify:evm  # full EVM plan pipeline (mainnet read-only swap; Sepolia transfer if funded)
 ```
 
 `npm run proof` needs a funded devnet keypair. If the public faucet is dry, pass one:
