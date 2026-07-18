@@ -12,13 +12,20 @@ body {
 }
 
 body {
-  background: radial-gradient(120% 80% at 50% -10%, #0d1220 0%, #08090c 55%);
-  color: theme("colors.ink");
+  /* Deep ink with a faint plotter grid — an instrument screen, not flat black. */
+  background-color: theme("colors.ink");
+  background-image:
+    radial-gradient(140% 90% at 50% -20%, rgba(37, 46, 66, 0.28) 0%, transparent 55%),
+    linear-gradient(rgba(120, 140, 180, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 140, 180, 0.028) 1px, transparent 1px);
+  background-size: 100% 100%, 34px 34px, 34px 34px;
+  background-attachment: fixed;
+  color: theme("colors.text-hi");
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Tabular, mono numerals everywhere numbers live. */
+/* Numbers live in tabular mono everywhere. */
 .num {
   font-family: theme("fontFamily.mono");
   font-variant-numeric: tabular-nums;
@@ -26,11 +33,37 @@ body {
   letter-spacing: -0.01em;
 }
 
-.hairline {
-  border-color: theme("colors.hairline");
+/* Instrument label: tiny, tracked-out mono caps. */
+.eyebrow {
+  font-family: theme("fontFamily.mono");
+  text-transform: uppercase;
+  letter-spacing: theme("letterSpacing.label");
+  font-size: 10px;
+  color: theme("colors.text-lo");
 }
 
-/* Thin, unobtrusive scrollbar that matches the canvas. */
+/* Faint ledger ruling for the verification slip. */
+.ledger-rule {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 33px,
+    rgba(130, 148, 180, 0.05) 33px,
+    rgba(130, 148, 180, 0.05) 34px
+  );
+}
+
+/* Perforated top edge of the slip — notches cut out of the paper via a mask so
+ * the ink background shows through, giving a real torn-receipt edge. */
+.perforation {
+  height: 9px;
+  background-color: theme("colors.slip");
+  border-top: 1px solid theme("colors.hairline");
+  -webkit-mask: radial-gradient(circle at 6px 0, transparent 3.4px, #000 3.7px) 0 0 / 12px 100% repeat-x;
+  mask: radial-gradient(circle at 6px 0, transparent 3.4px, #000 3.7px) 0 0 / 12px 100% repeat-x;
+}
+
+/* Thin scrollbar matching the ink. */
 * {
   scrollbar-width: thin;
   scrollbar-color: theme("colors.hairline") transparent;
@@ -44,54 +77,51 @@ body {
   border-radius: 999px;
 }
 
-/* Skeleton shimmer used during streaming/plan build. */
+/* Streaming skeleton shimmer. */
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: theme("colors.raised");
+  background: theme("colors.panel");
 }
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.04),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
   animation: shimmer 1.6s infinite;
 }
 
 :focus-visible {
-  outline: 2px solid theme("colors.accent");
+  outline: 2px solid theme("colors.gold");
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
-/* Theme the wallet-adapter default button to match the canvas. */
+/* Theme the Solana wallet-adapter button to the instrument palette. */
 .wallet-adapter-button {
-  font-family: theme("fontFamily.sans") !important;
-  color: theme("colors.ink") !important;
+  font-family: theme("fontFamily.mono") !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em !important;
+  color: theme("colors.text-hi") !important;
+  background-color: theme("colors.panel") !important;
+  border: 1px solid theme("colors.hairline") !important;
+  border-radius: 8px !important;
+  height: 36px !important;
   transition: border-color 0.15s ease, background-color 0.15s ease !important;
 }
 .wallet-adapter-button:not([disabled]):hover {
-  background-color: theme("colors.raised") !important;
-  border-color: theme("colors.accent") !important;
-}
-.wallet-adapter-button-trigger {
-  background-color: theme("colors.raised") !important;
+  background-color: theme("colors.panel") !important;
+  border-color: theme("colors.gold") !important;
 }
 .wallet-adapter-modal-wrapper {
   background: theme("colors.surface") !important;
   border: 1px solid theme("colors.hairline");
 }
 .wallet-adapter-modal-title {
-  color: theme("colors.ink") !important;
+  color: theme("colors.text-hi") !important;
 }
 
-/* Respect users who don't want motion — every animation collapses to nothing. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

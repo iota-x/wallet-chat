@@ -8,6 +8,7 @@ import { useWalletChat } from "./WalletProviders";
 import { useActiveOwner } from "./wallet-hooks";
 import { PlanPreview } from "./PlanPreview";
 import { Balances } from "./Balances";
+import { CHAINS } from "@/lib/chains";
 
 const SUGGESTIONS: Record<Chain, string[]> = {
   solana: [
@@ -19,13 +20,13 @@ const SUGGESTIONS: Record<Chain, string[]> = {
   ethereum: [
     "What's in my wallet?",
     "Swap 0.05 ETH into WBTC",
-    "Send 0.01 ETH to <0x address>",
-    "Move half my USDC to <0x address>",
+    "Send 0.01 ETH to <0x…>",
+    "Move half my USDC to <0x…>",
   ],
   bitcoin: [
     "What's my balance?",
-    "Send 0.001 BTC to <bc1… address>",
-    "Send 5000 sats to <address> with fastest fee",
+    "Send 0.001 BTC to <bc1…>",
+    "Send 5000 sats to <address>, fastest fee",
   ],
 };
 
@@ -53,7 +54,6 @@ export function Chat() {
     [chain, mode, owner, ownerPublicKey]
   );
 
-  // Key the chat by chain+owner so switching chains starts a clean thread.
   const { messages, sendMessage, status, error } = useChat({
     id: `${chain}:${owner ?? "none"}`,
     transport,
@@ -80,10 +80,7 @@ export function Chat() {
 
   return (
     <div className="flex flex-col h-full">
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 sm:px-0 py-4 space-y-4"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto py-5 space-y-5">
         {messages.length === 0 ? (
           <EmptyState disabled={disabled} onPick={submit} suggestions={SUGGESTIONS[chain]} />
         ) : (
@@ -91,20 +88,22 @@ export function Chat() {
         )}
         {busy && <Thinking />}
         {error && (
-          <div className="text-xs text-neg px-1">
+          <div className="font-mono text-xs text-neg px-1">
             {error.message || "Something went wrong."}
           </div>
         )}
       </div>
 
+      {/* Intent console. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           submit(input);
         }}
-        className="border-t border-hairline pt-3 pb-1"
+        className="pb-2"
       >
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 rounded-xl border border-hairline bg-surface/80 focus-within:border-gold/50 transition-colors px-3 py-2">
+          <span className="font-mono text-gold text-sm pb-2.5 select-none">›</span>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -115,20 +114,18 @@ export function Chat() {
               }
             }}
             rows={1}
-            placeholder={
-              disabled ? "Connect a wallet to start…" : "State an intent…"
-            }
+            placeholder={disabled ? "Connect a wallet to begin…" : "State an intent…"}
             disabled={disabled}
             aria-label="Message"
-            className="flex-1 resize-none rounded-xl bg-surface border border-hairline px-3.5 py-3 text-sm outline-none focus:border-accent/60 placeholder:text-faint max-h-40 disabled:opacity-50"
+            className="flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-text-lo max-h-40 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={disabled || busy || !input.trim()}
-            className="shrink-0 rounded-xl bg-accent text-canvas h-11 w-11 grid place-items-center disabled:bg-raised disabled:text-faint transition-colors"
+            className="shrink-0 rounded-lg bg-gold text-ink h-9 w-9 grid place-items-center font-mono text-base disabled:bg-panel disabled:text-text-lo transition-colors hover:bg-gold-deep"
             aria-label="Send"
           >
-            ↑
+            ↵
           </button>
         </div>
       </form>
@@ -140,7 +137,7 @@ function MessageBlock({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[92%] sm:max-w-[85%] space-y-3 ${isUser ? "items-end" : ""}`}>
+      <div className={`max-w-[93%] sm:max-w-[86%] space-y-3 ${isUser ? "items-end" : ""}`}>
         {message.parts.map((part, i) => (
           <PartView key={i} part={part} isUser={isUser} />
         ))}
@@ -159,14 +156,12 @@ function PartView({
   if (part.type === "text") {
     const text = (part as { text: string }).text;
     if (!text) return null;
-    return (
-      <div
-        className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-          isUser
-            ? "bg-accent/10 text-ink border border-accent/20"
-            : "bg-surface/70 text-ink/90 border border-hairline"
-        }`}
-      >
+    return isUser ? (
+      <div className="rounded-2xl rounded-br-sm bg-panel/70 border-r-2 border-gold/50 px-3.5 py-2.5 text-sm leading-relaxed text-text-hi whitespace-pre-wrap">
+        {text}
+      </div>
+    ) : (
+      <div className="text-sm leading-relaxed text-text-mid whitespace-pre-wrap px-0.5">
         {text}
       </div>
     );
@@ -174,36 +169,29 @@ function PartView({
 
   if (typeof part.type === "string" && part.type.startsWith("tool-")) {
     const toolName = part.type.slice("tool-".length);
-    const p = part as {
-      state?: string;
-      output?: unknown;
-      errorText?: string;
-    };
+    const p = part as { state?: string; output?: unknown; errorText?: string };
 
     if (p.state === "output-available") {
       const out = p.output;
       if (isPlan(out)) return <PlanPreview plan={out} />;
-      if (
-        toolName === "read_balances" &&
-        out &&
-        typeof out === "object" &&
-        "balances" in out
-      ) {
+      if (out && typeof out === "object" && "balances" in out) {
         const o = out as { balances: never; mode: string };
         return <Balances balances={o.balances} mode={o.mode} />;
       }
       if (out && typeof out === "object" && "error" in out) {
-        return (
-          <ToolNote tone="neg">{(out as { error: string }).error}</ToolNote>
-        );
+        return <ToolNote tone="neg">{(out as { error: string }).error}</ToolNote>;
       }
-      // quote_swap or other informational output — keep it quiet.
       return null;
     }
     if (p.state === "output-error") {
       return <ToolNote tone="neg">{p.errorText ?? "Tool error."}</ToolNote>;
     }
-    return <ToolNote tone="muted">Running {label(toolName)}…</ToolNote>;
+    return (
+      <ToolNote tone="run">
+        {label(toolName)}
+        <span className="animate-blink">▍</span>
+      </ToolNote>
+    );
   }
 
   return null;
@@ -212,10 +200,10 @@ function PartView({
 function label(tool: string): string {
   return (
     {
-      read_balances: "balance read",
-      quote_swap: "quote",
-      build_transfer_plan: "transfer plan",
-      build_swap_plan: "swap plan",
+      read_balances: "reading balances",
+      quote_swap: "fetching quote",
+      build_transfer_plan: "building transfer plan",
+      build_swap_plan: "building swap plan",
     }[tool] ?? tool
   );
 }
@@ -225,14 +213,14 @@ function ToolNote({
   tone,
 }: {
   children: React.ReactNode;
-  tone: "muted" | "neg";
+  tone: "run" | "neg";
 }) {
   return (
     <div
-      className={`text-xs rounded-lg px-3 py-2 border ${
+      className={`font-mono text-[11px] tracking-wide ${
         tone === "neg"
-          ? "text-neg border-neg/30 bg-neg/5"
-          : "text-muted border-hairline bg-surface/50"
+          ? "text-neg border border-neg/30 bg-neg/5 rounded-lg px-3 py-2"
+          : "text-text-lo px-0.5"
       }`}
     >
       {children}
@@ -242,14 +230,9 @@ function ToolNote({
 
 function Thinking() {
   return (
-    <div className="flex gap-1.5 px-2 items-center text-faint">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="h-1.5 w-1.5 rounded-full bg-faint animate-pulse"
-          style={{ animationDelay: `${i * 150}ms` }}
-        />
-      ))}
+    <div className="flex items-center gap-2 px-1 font-mono text-[11px] text-text-lo">
+      <span className="animate-blink">▍</span>
+      <span className="tracking-label uppercase">verifying</span>
     </div>
   );
 }
@@ -264,32 +247,73 @@ function EmptyState({
   suggestions: string[];
 }) {
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center px-6 py-12 gap-6">
-      <div className="space-y-2 max-w-md">
-        <h2 className="text-lg font-medium text-ink">
-          State an intent. See the risk before you sign.
+    <div className="min-h-full flex flex-col items-center justify-center text-center px-2 py-8 gap-6 sm:gap-7">
+      <div className="space-y-3 max-w-md">
+        <div className="eyebrow">state intent · read the risk · then sign</div>
+        <h2 className="text-[22px] sm:text-[28px] leading-[1.15] font-semibold text-text-hi tracking-tight">
+          See exactly what a transaction does
+          <br />
+          before it happens.
         </h2>
-        <p className="text-sm text-muted leading-relaxed">
-          WalletChat plans your action, simulates it against live chain state,
-          and shows the exact balance diff. Nothing signs until guardrails pass
-          and you click confirm.
+        <p className="text-[13px] text-text-mid leading-relaxed">
+          Plan an intent in plain language. WalletChat simulates it against live
+          chain state and prints a verification slip with the exact balance diff —
+          nothing signs until every guardrail passes and you arm it.
         </p>
       </div>
+
+      <SpecimenSlip />
+
       <div className="flex flex-wrap gap-2 justify-center max-w-lg">
         {suggestions.map((s) => (
           <button
             key={s}
             onClick={() => onPick(s)}
             disabled={disabled}
-            className="text-xs rounded-full border border-hairline bg-surface/60 px-3 py-1.5 text-muted hover:text-ink hover:border-accent/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="font-mono text-[11px] rounded-lg border border-hairline bg-surface/60 px-3 py-1.5 text-text-mid hover:text-text-hi hover:border-gold/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {s}
           </button>
         ))}
       </div>
-      {disabled && (
-        <p className="text-[11px] text-faint">Connect a wallet to begin.</p>
-      )}
+    </div>
+  );
+}
+
+/** A faded example verification slip — teaches what the instrument produces. */
+function SpecimenSlip() {
+  return (
+    <div className="relative w-full max-w-sm sm:max-w-md select-none opacity-90">
+      <div className="perforation" />
+      <div className="ledger-rule rounded-b-xl border border-hairline border-t-0 bg-slip px-4 pt-3 pb-4 relative overflow-hidden">
+        <div
+          className="absolute right-3 top-6 font-mono text-[26px] font-semibold text-text-lo/25 tracking-widest -rotate-[8deg] border-2 border-text-lo/20 rounded px-2"
+          aria-hidden
+        >
+          SPECIMEN
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="eyebrow">verification slip</span>
+          <span className="num text-[10px] text-text-lo">plan · example</span>
+        </div>
+        <div className="mt-3 space-y-1.5 text-left">
+          <SpecimenRow sym="USDC" v="−250.00" tone="neg" />
+          <SpecimenRow sym="JitoSOL" v="+1.6820" tone="pos" />
+        </div>
+        <div className="mt-3 pt-2 border-t border-hairlineSoft flex items-center justify-between">
+          <span className="eyebrow">guardrails</span>
+          <span className="font-mono text-[11px] text-pos tracking-label">PASS</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpecimenRow({ sym, v, tone }: { sym: string; v: string; tone: "pos" | "neg" }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="font-mono text-[12px] text-text-mid">{sym}</span>
+      <span className={`num text-[13px] ${tone === "pos" ? "text-pos" : "text-neg"}`}>{v}</span>
     </div>
   );
 }

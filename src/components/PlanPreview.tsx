@@ -5,16 +5,18 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import type { Plan, AssetDelta, GuardrailCheck, BtcIo } from "@/lib/types";
 import { formatSigned, formatUsd, formatUi, pct, shortAddr } from "@/lib/format";
+import { networkName } from "@/lib/chains";
 import { useWalletChat } from "./WalletProviders";
 import { sendEvmTx, getEthereum } from "@/lib/wallet/evm";
 import { signAndPushPsbt, getUnisat } from "@/lib/wallet/btc";
 
 /**
- * THE signature element. Makes the risk of a transaction legible at a glance and
- * gates the confirm affordance on `plan.signable`. Immediately before signing we
- * re-simulate against fresh state. Signing is chain-specific and always
- * client-side: Solana via wallet-adapter, Ethereum via MetaMask, Bitcoin via
- * Unisat. The server never signs.
+ * THE signature element — the verification slip. A printed instrument readout
+ * that makes a transaction's risk legible: a document header, the exact balance
+ * diff as a ledger, an inspection stamp (PASS / BLOCKED), and an ARM-TO-SIGN
+ * control that stays locked until `plan.signable` is true. Immediately before
+ * signing we re-simulate against fresh state. Signing is chain-specific and
+ * always client-side — the server never holds a key.
  */
 
 function b64ToBytes(b64: string): Uint8Array {
@@ -68,7 +70,6 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
 
   async function onConfirm() {
     try {
-      // 1) Drift defense — re-simulate/rebuild against fresh state.
       setState({ s: "resimulating" });
       const res = await fetch("/api/resim", {
         method: "POST",
@@ -86,12 +87,11 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
         setState({
           s: "drift",
           message:
-            "State moved — this plan is no longer safe to sign. Review the updated preview and ask again.",
+            "State moved — this plan is no longer safe to sign. Review the updated slip and ask again.",
         });
         return;
       }
 
-      // 2) Sign + submit, per chain. Keys never leave the wallet.
       setState({ s: "signing" });
       let signature: string;
       if (fresh.chain === "solana") {
@@ -126,74 +126,83 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
   const ins = plan.diff.filter((d) => BigInt(d.delta) > 0n);
 
   return (
-    <div className="animate-fade-up rounded-2xl border border-hairline bg-surface/80 backdrop-blur-sm overflow-hidden">
-      <Header plan={plan} />
-      {plan.route && <RouteStrip plan={plan} />}
+    <div className="animate-print-in w-full">
+      <div className="perforation" />
+      <div className="ledger-rule rounded-b-2xl border border-hairline border-t-0 bg-slip overflow-hidden">
+        <SlipHeader plan={plan} />
+        {plan.route && <RouteStrip plan={plan} />}
 
-      <div className="px-4 sm:px-5 py-4 space-y-4">
-        <section className="grid gap-2">
-          <Label>Balance changes</Label>
-          {plan.diff.length === 0 && (
-            <p className="text-sm text-muted">No balance change detected.</p>
+        <div className="px-4 sm:px-5 py-4 space-y-4">
+          <section className="space-y-1.5">
+            <span className="eyebrow">balance changes</span>
+            {plan.diff.length === 0 && (
+              <p className="text-sm text-text-mid">No balance change detected.</p>
+            )}
+            <div className="rounded-lg">
+              {outs.map((d, i) => (
+                <LedgerRow key={`o${i}`} d={d} index={i} />
+              ))}
+              {ins.map((d, i) => (
+                <LedgerRow key={`i${i}`} d={d} index={outs.length + i} />
+              ))}
+            </div>
+          </section>
+
+          {plan.btc && <BtcIoStrip inputs={plan.btc.inputs} outputs={plan.btc.outputs} />}
+
+          <FeeRow plan={plan} />
+
+          <Guardrails checks={plan.guardrail.checks} pass={plan.guardrail.pass} />
+
+          {plan.warnings.length > 0 && (
+            <ul className="space-y-1">
+              {plan.warnings.map((w, i) => (
+                <li key={i} className="text-[11px] text-warn/90 flex gap-2 font-mono">
+                  <span aria-hidden>▲</span>
+                  <span>{w}</span>
+                </li>
+              ))}
+            </ul>
           )}
-          {outs.map((d, i) => (
-            <DeltaRow key={`o${i}`} d={d} index={i} />
-          ))}
-          {ins.map((d, i) => (
-            <DeltaRow key={`i${i}`} d={d} index={outs.length + i} />
-          ))}
-        </section>
 
-        {plan.btc && <BtcIoStrip inputs={plan.btc.inputs} outputs={plan.btc.outputs} />}
+          {!plan.simulation.success && plan.chain !== "bitcoin" && (
+            <SimLogs logs={plan.simulation.logs} err={plan.simulation.err} />
+          )}
 
-        <FeeRow plan={plan} />
-
-        <Guardrails checks={plan.guardrail.checks} pass={plan.guardrail.pass} />
-
-        {plan.warnings.length > 0 && (
-          <ul className="space-y-1">
-            {plan.warnings.map((w, i) => (
-              <li key={i} className="text-xs text-warn/90 flex gap-2">
-                <span aria-hidden>▲</span>
-                <span>{w}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {!plan.simulation.success && plan.chain !== "bitcoin" && (
-          <SimLogs logs={plan.simulation.logs} err={plan.simulation.err} />
-        )}
-
-        <ConfirmZone
-          plan={plan}
-          state={state}
-          canConfirm={canConfirm}
-          needsTyped={needsTyped}
-          typed={typed}
-          setTyped={setTyped}
-          typedOk={typedOk}
-          walletConnected={hasSigner && walletMatches}
-          onConfirm={onConfirm}
-        />
+          <ConfirmZone
+            plan={plan}
+            state={state}
+            canConfirm={canConfirm}
+            needsTyped={needsTyped}
+            typed={typed}
+            setTyped={setTyped}
+            typedOk={typedOk}
+            walletReady={hasSigner && walletMatches}
+            onConfirm={onConfirm}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-function Header({ plan }: { plan: Plan }) {
+function SlipHeader({ plan }: { plan: Plan }) {
   return (
-    <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-hairline">
+    <div className="px-4 sm:px-5 pt-3.5 pb-3 border-b border-hairlineSoft flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <div className="text-[13px] font-medium text-ink truncate">
+        <span className="eyebrow">verification slip · {plan.kind}</span>
+        <div className="text-[13px] text-text-hi font-medium mt-1.5 leading-snug">
           {plan.intentSummary}
         </div>
-        <div className="text-[11px] text-faint mt-0.5 num">plan {plan.id}</div>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Badge tone="ink">{plan.chain}</Badge>
-        <Badge tone={plan.mode === "devnet" ? "accent" : "muted"}>{plan.mode}</Badge>
-        <Badge tone="muted">{plan.kind}</Badge>
+      <div className="text-right shrink-0 space-y-1.5">
+        <div className="num text-[10px] text-text-lo">{plan.id}</div>
+        <div className="flex gap-1 justify-end">
+          <Tag>{plan.chain}</Tag>
+          <Tag tone={plan.mode === "mainnet" ? "neg" : "gold"}>
+            {networkName(plan.chain, plan.mode)}
+          </Tag>
+        </div>
       </div>
     </div>
   );
@@ -202,99 +211,88 @@ function Header({ plan }: { plan: Plan }) {
 function RouteStrip({ plan }: { plan: Plan }) {
   const r = plan.route!;
   return (
-    <div className="px-4 sm:px-5 py-3 border-b border-hairline bg-raised/40">
-      <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="px-4 sm:px-5 py-3 border-b border-hairlineSoft bg-surface/40">
+      <div className="flex items-center gap-1 flex-wrap">
         {r.steps.map((t, i) => (
           <React.Fragment key={`${t.mint}-${i}`}>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-canvas px-2.5 py-1 text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-ink px-2.5 py-1 font-mono text-[11px]">
+              <span className="h-1 w-1 rounded-full bg-gold" />
               {t.symbol}
             </span>
             {i < r.steps.length - 1 && (
-              <span className="text-faint text-xs" aria-hidden>→</span>
+              <span className="text-text-lo text-[11px] px-0.5" aria-hidden>
+                ──▸
+              </span>
             )}
           </React.Fragment>
         ))}
       </div>
-      <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-[11px]">
-        <Metric label="Route">{r.markets.join(" · ") || "direct"}</Metric>
-        <Metric label="Price impact" tone={r.priceImpactPct >= 1 ? "warn" : "default"}>
+      <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1">
+        <Metric label="via">{r.markets.join(" · ") || "direct"}</Metric>
+        <Metric label="impact" tone={r.priceImpactPct >= 1 ? "warn" : "default"}>
           {pct(r.priceImpactPct)}
         </Metric>
-        <Metric label="Slippage">{pct(r.slippageBps / 100)}</Metric>
+        <Metric label="slippage">{pct(r.slippageBps / 100)}</Metric>
       </div>
     </div>
   );
 }
 
-function DeltaRow({ d, index }: { d: AssetDelta; index: number }) {
+function LedgerRow({ d, index }: { d: AssetDelta; index: number }) {
   const neg = BigInt(d.delta) < 0n;
   return (
     <div
-      className="flex items-center justify-between rounded-lg bg-raised/50 px-3 py-2.5 animate-count-in"
-      style={{ animationDelay: `${index * 60}ms` }}
+      className="flex items-baseline gap-2 py-2 animate-count-in"
+      style={{ animationDelay: `${index * 55}ms` }}
     >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span
-          className={`h-6 w-6 shrink-0 rounded-full grid place-items-center text-[11px] ${
-            neg ? "bg-neg/10 text-neg" : "bg-pos/10 text-pos"
-          }`}
-          aria-hidden
-        >
-          {neg ? "↑" : "↓"}
+      <span className="font-mono text-[13px] text-text-hi">{d.symbol}</span>
+      <span className="font-mono text-[9px] uppercase tracking-label text-text-lo">
+        {neg ? "debit" : "credit"}
+      </span>
+      {d.ataCreated && (
+        <span className="font-mono text-[9px] text-text-lo border border-hairline rounded px-1">
+          new acct
         </span>
-        <div className="min-w-0">
-          <div className="text-sm text-ink flex items-center gap-1.5">
-            {d.symbol}
-            {d.ataCreated && (
-              <span className="text-[10px] text-faint border border-hairline rounded px-1 py-px">
-                new account
-              </span>
-            )}
-          </div>
-          <div className="text-[11px] text-faint">
-            {neg ? "out" : "in"}
-            {d.isNative ? " · native" : ""}
-          </div>
-        </div>
-      </div>
-      <div className="text-right shrink-0">
-        <div className={`num text-sm ${neg ? "text-neg" : "text-pos"}`}>
+      )}
+      {/* dotted leader connecting label to value, receipt-style */}
+      <span className="flex-1 self-center border-b border-dotted border-hairline/70" />
+      <span className="text-right">
+        <span className={`num text-[15px] ${neg ? "text-neg" : "text-pos"}`}>
           {formatSigned(d.uiDelta)}
-        </div>
-        <div className="num text-[11px] text-faint">
-          {d.usd != null ? formatUsd(d.usd) : "unpriced"}
-        </div>
-      </div>
+        </span>
+        <span className="num text-[10px] text-text-lo ml-2">
+          {d.usd != null ? formatUsd(d.usd) : "—"}
+        </span>
+      </span>
     </div>
   );
 }
 
 function BtcIoStrip({ inputs, outputs }: { inputs: BtcIo[]; outputs: BtcIo[] }) {
   return (
-    <section className="rounded-xl border border-hairline overflow-hidden text-[11px]">
-      <div className="grid grid-cols-2 divide-x divide-hairline">
+    <section className="rounded-lg border border-hairlineSoft overflow-hidden">
+      <div className="grid grid-cols-2 divide-x divide-hairlineSoft">
         <div className="p-3">
-          <Label>Inputs ({inputs.length} UTXO)</Label>
-          <ul className="mt-1.5 space-y-1">
+          <span className="eyebrow">inputs · {inputs.length} utxo</span>
+          <ul className="mt-2 space-y-1">
             {inputs.map((i, n) => (
-              <li key={n} className="flex justify-between gap-2">
-                <span className="text-faint num">{shortAddr(i.address, 5)}</span>
-                <span className="num text-ink/80">{formatUi(i.valueSat / 1e8)}</span>
+              <li key={n} className="flex justify-between gap-2 font-mono text-[11px]">
+                <span className="text-text-lo">{shortAddr(i.address, 5)}</span>
+                <span className="num text-text-mid">{formatUi(i.valueSat / 1e8)}</span>
               </li>
             ))}
           </ul>
         </div>
         <div className="p-3">
-          <Label>Outputs</Label>
-          <ul className="mt-1.5 space-y-1">
+          <span className="eyebrow">outputs</span>
+          <ul className="mt-2 space-y-1">
             {outputs.map((o, n) => (
-              <li key={n} className="flex justify-between gap-2">
-                <span className="text-faint num flex items-center gap-1">
+              <li key={n} className="flex justify-between gap-2 font-mono text-[11px]">
+                <span className="text-text-lo flex items-center gap-1">
                   {shortAddr(o.address, 5)}
-                  {o.isChange && <span className="text-[9px] text-accent">change</span>}
+                  {o.isChange && <span className="text-gold text-[9px]">change</span>}
                 </span>
-                <span className="num text-ink/80">{formatUi(o.valueSat / 1e8)}</span>
+                <span className="num text-text-mid">{formatUi(o.valueSat / 1e8)}</span>
               </li>
             ))}
           </ul>
@@ -308,14 +306,14 @@ function FeeRow({ plan }: { plan: Plan }) {
   const f = plan.fee;
   const toNative = (n: number) => formatUi(n / 10 ** plan.nativeDecimals, 8);
   return (
-    <div className="flex items-center justify-between text-[11px] text-muted border-t border-hairline pt-3">
-      <span>{plan.chain === "bitcoin" ? "Network fee" : "Network fee + rent"}</span>
-      <span className="num text-ink/80">
+    <div className="flex items-baseline gap-2 border-t border-hairlineSoft pt-3">
+      <span className="eyebrow">{plan.chain === "bitcoin" ? "network fee" : "fee + rent"}</span>
+      <span className="flex-1 self-center border-b border-dotted border-hairline/70" />
+      <span className="num text-[12px] text-text-mid">
         {toNative(f.totalLamports)} {plan.nativeSymbol}
         {f.rentLamports > 0 && (
-          <span className="text-faint">
-            {"  "}({toNative(f.baseLamports + f.priorityLamports)} fee +{" "}
-            {toNative(f.rentLamports)} rent)
+          <span className="text-text-lo">
+            {"  "}({toNative(f.baseLamports + f.priorityLamports)}+{toNative(f.rentLamports)}r)
           </span>
         )}
       </span>
@@ -325,18 +323,26 @@ function FeeRow({ plan }: { plan: Plan }) {
 
 function Guardrails({ checks, pass }: { checks: GuardrailCheck[]; pass: boolean }) {
   return (
-    <section className="rounded-xl border border-hairline overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 bg-raised/50">
-        <Label>Guardrails</Label>
-        <Badge tone={pass ? "accent" : "neg"}>{pass ? "pass" : "blocked"}</Badge>
+    <section className="relative rounded-lg border border-hairlineSoft overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-hairlineSoft">
+        <span className="eyebrow">guardrail inspection</span>
       </div>
-      <ul className="divide-y divide-hairline">
+      {/* the inspection stamp */}
+      <div
+        className={`absolute right-3 top-1.5 animate-stamp-in font-mono text-[15px] font-semibold tracking-label border-2 rounded px-2 py-0.5 ${
+          pass ? "text-pos border-pos/50" : "text-neg border-neg/50"
+        }`}
+        aria-label={pass ? "guardrails passed" : "guardrails blocked"}
+      >
+        {pass ? "PASS" : "BLOCKED"}
+      </div>
+      <ul className="divide-y divide-hairlineSoft">
         {checks.map((c) => (
           <li key={c.id} className="flex items-start gap-2.5 px-3 py-2">
             <CheckIcon passed={c.passed} severity={c.severity} />
             <div className="min-w-0">
-              <div className="text-[12px] text-ink/90">{c.label}</div>
-              <div className="text-[11px] text-faint">{c.detail}</div>
+              <div className="font-mono text-[11px] text-text-hi/90">{c.label}</div>
+              <div className="text-[11px] text-text-lo leading-snug">{c.detail}</div>
             </div>
           </li>
         ))}
@@ -345,26 +351,20 @@ function Guardrails({ checks, pass }: { checks: GuardrailCheck[]; pass: boolean 
   );
 }
 
-function CheckIcon({
-  passed,
-  severity,
-}: {
-  passed: boolean;
-  severity: "block" | "warn";
-}) {
-  if (passed) return <span className="text-pos text-xs mt-0.5" aria-label="passed">✓</span>;
+function CheckIcon({ passed, severity }: { passed: boolean; severity: "block" | "warn" }) {
+  if (passed) return <span className="text-pos font-mono text-[11px] mt-0.5" aria-label="pass">✓</span>;
   if (severity === "warn")
-    return <span className="text-warn text-xs mt-0.5" aria-label="warning">▲</span>;
-  return <span className="text-neg text-xs mt-0.5" aria-label="blocked">✕</span>;
+    return <span className="text-warn font-mono text-[11px] mt-0.5" aria-label="warn">▲</span>;
+  return <span className="text-neg font-mono text-[11px] mt-0.5" aria-label="blocked">✕</span>;
 }
 
 function SimLogs({ logs, err }: { logs: string[]; err: unknown }) {
   return (
     <details className="rounded-lg border border-neg/30 bg-neg/5 px-3 py-2">
-      <summary className="text-xs text-neg cursor-pointer">
-        Simulation failed — view logs
+      <summary className="font-mono text-[11px] text-neg cursor-pointer">
+        simulation failed — view logs
       </summary>
-      <pre className="mt-2 text-[10px] leading-relaxed text-muted overflow-x-auto max-h-48">
+      <pre className="mt-2 text-[10px] leading-relaxed text-text-mid overflow-x-auto max-h-48">
         {JSON.stringify(err, null, 2)}
         {"\n\n"}
         {logs.join("\n")}
@@ -388,7 +388,7 @@ function ConfirmZone({
   typed,
   setTyped,
   typedOk,
-  walletConnected,
+  walletReady,
   onConfirm,
 }: {
   plan: Plan;
@@ -398,21 +398,21 @@ function ConfirmZone({
   typed: string;
   setTyped: (v: string) => void;
   typedOk: boolean;
-  walletConnected: boolean;
+  walletReady: boolean;
   onConfirm: () => void;
 }) {
   if (state.s === "confirmed") {
     const url = EXPLORER[plan.chain](state.signature, plan.mode === "mainnet");
     return (
-      <div className="rounded-xl border border-pos/30 bg-pos/5 px-4 py-3 animate-fade-up">
-        <div className="text-sm text-pos font-medium">
-          Broadcast on {plan.chain} {plan.mode}
+      <div className="rounded-lg border border-pos/35 bg-pos/[0.06] px-4 py-3 animate-fade-up">
+        <div className="font-mono text-[11px] tracking-label uppercase text-pos">
+          ✓ broadcast · {plan.chain} {plan.mode}
         </div>
         <a
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="num text-[11px] text-accent hover:underline break-all"
+          className="num text-[11px] text-gold hover:underline break-all"
         >
           {shortAddr(state.signature, 8)} ↗
         </a>
@@ -420,7 +420,7 @@ function ConfirmZone({
     );
   }
 
-  const reason = disabledReason(plan, walletConnected, typedOk, needsTyped);
+  const reason = disabledReason(plan, walletReady, typedOk, needsTyped);
   const busy =
     state.s === "resimulating" || state.s === "signing" || state.s === "sending";
 
@@ -428,15 +428,16 @@ function ConfirmZone({
     <div className="space-y-2.5 pt-1">
       {needsTyped && plan.signable && (
         <label className="block">
-          <span className="text-[11px] text-muted">
-            High value — type <span className="num text-ink">“{needsTyped}”</span> to enable:
+          <span className="font-mono text-[11px] text-text-mid">
+            high value — type{" "}
+            <span className="text-gold">“{needsTyped}”</span> to arm:
           </span>
           <input
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             placeholder={needsTyped}
             aria-label="Type the confirmation phrase"
-            className="mt-1 w-full rounded-lg bg-canvas border border-hairline px-3 py-2 text-sm num placeholder:text-faint focus:border-accent outline-none"
+            className="mt-1.5 w-full rounded-lg bg-ink border border-hairline px-3 py-2 text-sm num placeholder:text-text-lo focus:border-gold outline-none"
           />
         </label>
       )}
@@ -444,19 +445,19 @@ function ConfirmZone({
       <button
         onClick={onConfirm}
         disabled={!canConfirm || busy}
-        className={`w-full rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+        className={`w-full rounded-lg px-4 py-3 font-mono text-[13px] tracking-label uppercase transition-colors ${
           canConfirm && !busy
-            ? "bg-accent text-canvas hover:bg-accent-dim animate-pulse-ring"
-            : "bg-raised text-faint cursor-not-allowed"
+            ? "bg-gold text-ink hover:bg-gold-deep animate-arm-glow"
+            : "bg-panel text-text-lo border border-hairline cursor-not-allowed"
         }`}
       >
-        {busy ? busyLabel(state) : plan.signable ? "Confirm & sign" : "Signing disabled"}
+        {busy ? busyLabel(state) : plan.signable ? "▲ arm & sign" : "⦸ signing locked"}
       </button>
 
-      {state.s === "drift" && <p className="text-xs text-warn">{state.message}</p>}
-      {state.s === "error" && <p className="text-xs text-neg break-words">{state.message}</p>}
+      {state.s === "drift" && <p className="text-[11px] text-warn font-mono">{state.message}</p>}
+      {state.s === "error" && <p className="text-[11px] text-neg break-words font-mono">{state.message}</p>}
       {!plan.signable && reason && (
-        <p className="text-[11px] text-faint text-center">{reason}</p>
+        <p className="eyebrow text-center normal-case tracking-normal">{reason}</p>
       )}
     </div>
   );
@@ -465,55 +466,49 @@ function ConfirmZone({
 function busyLabel(state: SignState): string {
   switch (state.s) {
     case "resimulating":
-      return "Re-checking…";
+      return "re-checking…";
     case "signing":
-      return "Awaiting signature…";
+      return "awaiting signature…";
     case "sending":
-      return "Submitting…";
+      return "broadcasting…";
     default:
-      return "Working…";
+      return "working…";
   }
 }
 
 function disabledReason(
   plan: Plan,
-  walletConnected: boolean,
+  walletReady: boolean,
   typedOk: boolean,
   needsTyped: string | null
 ): string | null {
   if (plan.mode === "mainnet")
-    return "Mainnet is read-only in this demo — the plan and diff are real, signing is off.";
+    return "mainnet is read-only here — the slip and diff are real, signing is off";
   if (!plan.simulation.success && plan.chain !== "bitcoin")
-    return "Simulation failed, so this cannot be signed.";
-  if (!plan.guardrail.pass) return "A guardrail is blocking this plan.";
-  if (!walletConnected) return "Connect the matching wallet to sign.";
-  if (needsTyped && !typedOk) return "Type the confirmation phrase to continue.";
+    return "simulation failed, so this cannot be signed";
+  if (!plan.guardrail.pass) return "a guardrail is blocking this plan";
+  if (!walletReady) return "connect the matching wallet to sign";
+  if (needsTyped && !typedOk) return "type the confirmation phrase to arm";
   return null;
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="text-[10px] uppercase tracking-wider text-faint">{children}</span>
-  );
-}
-
-function Badge({
+function Tag({
   children,
-  tone,
+  tone = "muted",
 }: {
   children: React.ReactNode;
-  tone: "accent" | "muted" | "neg" | "ink";
+  tone?: "muted" | "gold" | "neg";
 }) {
   const cls =
-    tone === "accent"
-      ? "border-accent/40 text-accent"
+    tone === "gold"
+      ? "border-gold/35 text-gold"
       : tone === "neg"
         ? "border-neg/40 text-neg"
-        : tone === "ink"
-          ? "border-hairline text-ink/80"
-          : "border-hairline text-muted";
+        : "border-hairline text-text-mid";
   return (
-    <span className={`text-[10px] uppercase tracking-wide rounded-full border px-2 py-0.5 ${cls}`}>
+    <span
+      className={`font-mono text-[9px] uppercase tracking-label rounded border px-1.5 py-0.5 ${cls}`}
+    >
       {children}
     </span>
   );
@@ -530,8 +525,8 @@ function Metric({
 }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="text-faint">{label}</span>
-      <span className={`num ${tone === "warn" ? "text-warn" : "text-ink/80"}`}>
+      <span className="eyebrow">{label}</span>
+      <span className={`num text-[11px] ${tone === "warn" ? "text-warn" : "text-text-mid"}`}>
         {children}
       </span>
     </span>

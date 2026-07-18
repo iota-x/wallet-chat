@@ -3,6 +3,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { useWalletChat } from "./WalletProviders";
+import { useActiveOwner } from "./wallet-hooks";
 import { Chat } from "./Chat";
 import type { Chain, Mode } from "@/lib/types";
 import { CHAINS, networkName } from "@/lib/chains";
@@ -16,28 +17,32 @@ const WalletMultiButton = dynamic(
 
 export function App() {
   const { chain, setChain, mode, setMode } = useWalletChat();
+  const owner = useActiveOwner();
 
   return (
-    <div className="min-h-dvh flex flex-col max-w-2xl mx-auto px-4">
-      <header className="py-4 border-b border-hairline space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-accent/15 border border-accent/30 grid place-items-center">
-              <span className="h-2.5 w-2.5 rounded-full bg-accent animate-pulse-ring" />
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold text-ink tracking-tight">
-                WalletChat
+    <div className="h-dvh flex flex-col max-w-2xl mx-auto px-4">
+      <header className="pt-5 pb-3 shrink-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <InstrumentMark />
+            <div className="leading-none">
+              <div className="font-mono text-[15px] font-semibold tracking-[0.02em] text-text-hi">
+                WALLETCHAT
               </div>
-              <div className="text-[10px] text-faint">simulate before you sign</div>
+              <div className="eyebrow mt-1.5">transaction verifier</div>
             </div>
           </div>
           <ConnectArea />
         </div>
 
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <ChainSelector chain={chain} setChain={setChain} />
-          <ModeToggle mode={mode} setMode={setMode} />
+        {/* Instrument status rail. */}
+        <div className="mt-4 rounded-xl border border-hairline bg-surface/70 px-2 py-2 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <ChainSelector chain={chain} setChain={setChain} />
+            <span className="h-4 w-px bg-hairline hidden sm:block" />
+            <ModeToggle mode={mode} setMode={setMode} chain={chain} />
+          </div>
+          <StatusReadout owner={owner} chain={chain} mode={mode} />
         </div>
       </header>
 
@@ -45,14 +50,54 @@ export function App() {
         <Chat />
       </main>
 
-      <footer className="py-2 text-center">
-        <p className="text-[10px] text-faint">
-          {CHAINS[chain].label} {networkName(chain, mode)} ·{" "}
-          {mode === "devnet"
-            ? "executes end-to-end after your confirmation"
-            : "read-only: real reads, plans & sims, signing disabled"}
+      <footer className="py-2.5 shrink-0">
+        <p className="eyebrow text-center">
+          simulate · guardrail · sign — {CHAINS[chain].label} {networkName(chain, mode)}
         </p>
       </footer>
+    </div>
+  );
+}
+
+function InstrumentMark() {
+  return (
+    <div className="h-9 w-9 rounded-lg border border-gold/35 bg-gold/[0.07] grid place-items-center relative overflow-hidden">
+      <div className="absolute inset-x-1.5 top-2 h-px bg-gold/25" />
+      <div className="absolute inset-x-1.5 bottom-2 h-px bg-gold/15" />
+      <span className="font-mono text-gold text-[13px] leading-none">₩</span>
+    </div>
+  );
+}
+
+function StatusReadout({
+  owner,
+  chain,
+  mode,
+}: {
+  owner: string | null;
+  chain: Chain;
+  mode: Mode;
+}) {
+  return (
+    <div className="flex items-center gap-2 pr-1">
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${
+          owner ? "bg-gold animate-blink" : "bg-text-lo"
+        }`}
+      />
+      <span className="num text-[11px] text-text-mid">
+        {owner ? shortAddr(owner, 4) : "no wallet"}
+      </span>
+      <span
+        className={`eyebrow px-1.5 py-0.5 rounded border ${
+          mode === "mainnet"
+            ? "border-neg/40 text-neg"
+            : "border-gold/30 text-gold"
+        }`}
+        title={networkName(chain, mode)}
+      >
+        {mode === "mainnet" ? "read-only" : "live"}
+      </span>
     </div>
   );
 }
@@ -61,29 +106,17 @@ function ConnectArea() {
   const { chain, evmAddress, connectEvm, btcAddress, connectBtc } = useWalletChat();
 
   if (chain === "solana") {
-    return (
-      <WalletMultiButton
-        style={{
-          height: 36,
-          fontSize: 13,
-          borderRadius: 10,
-          backgroundColor: "#14171e",
-          border: "1px solid #20242e",
-          paddingInline: 12,
-        }}
-      />
-    );
+    return <WalletMultiButton />;
   }
 
   const addr = chain === "ethereum" ? evmAddress : btcAddress;
   const onClick = chain === "ethereum" ? connectEvm : connectBtc;
-  const label =
-    chain === "ethereum" ? "Connect MetaMask" : "Connect Unisat";
+  const label = chain === "ethereum" ? "Connect MetaMask" : "Connect Unisat";
 
   return (
     <button
       onClick={() => onClick().catch((e) => alert(e.message))}
-      className="h-9 rounded-[10px] bg-raised border border-hairline px-3 text-[13px] text-ink hover:border-accent transition-colors num"
+      className="h-9 rounded-lg bg-panel border border-hairline px-3 text-[12px] font-mono text-text-hi hover:border-gold transition-colors"
     >
       {addr ? shortAddr(addr, 5) : label}
     </button>
@@ -98,11 +131,7 @@ function ChainSelector({
   setChain: (c: Chain) => void;
 }) {
   return (
-    <div
-      role="tablist"
-      aria-label="Chain"
-      className="inline-flex rounded-lg border border-hairline bg-surface p-0.5 text-xs"
-    >
+    <div role="tablist" aria-label="Chain" className="inline-flex gap-0.5">
       {(Object.keys(CHAINS) as Chain[]).map((c) => {
         const active = chain === c;
         return (
@@ -111,11 +140,13 @@ function ChainSelector({
             role="tab"
             aria-selected={active}
             onClick={() => setChain(c)}
-            className={`px-2.5 py-1 rounded-md transition-colors ${
-              active ? "bg-raised text-ink" : "text-faint hover:text-muted"
+            className={`font-mono text-[11px] px-2.5 py-1.5 rounded-md transition-colors ${
+              active
+                ? "bg-panel text-gold border border-gold/30"
+                : "text-text-lo hover:text-text-mid border border-transparent"
             }`}
           >
-            {CHAINS[c].label}
+            {CHAINS[c].nativeSymbol}
           </button>
         );
       })}
@@ -126,17 +157,14 @@ function ChainSelector({
 function ModeToggle({
   mode,
   setMode,
+  chain,
 }: {
   mode: Mode;
   setMode: (m: Mode) => void;
+  chain: Chain;
 }) {
-  const { chain } = useWalletChat();
   return (
-    <div
-      role="tablist"
-      aria-label="Network tier"
-      className="inline-flex rounded-lg border border-hairline bg-surface p-0.5 text-xs"
-    >
+    <div role="tablist" aria-label="Network tier" className="inline-flex gap-0.5">
       {(["devnet", "mainnet"] as Mode[]).map((m) => {
         const active = mode === m;
         return (
@@ -145,10 +173,9 @@ function ModeToggle({
             role="tab"
             aria-selected={active}
             onClick={() => setMode(m)}
-            className={`px-2.5 py-1 rounded-md transition-colors ${
-              active ? "bg-raised text-ink" : "text-faint hover:text-muted"
+            className={`font-mono text-[11px] px-2 py-1.5 rounded-md transition-colors ${
+              active ? "bg-panel text-text-hi border border-hairline" : "text-text-lo hover:text-text-mid border border-transparent"
             }`}
-            title={networkName(chain, m)}
           >
             {networkName(chain, m)}
           </button>
