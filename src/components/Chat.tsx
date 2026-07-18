@@ -40,16 +40,17 @@ function isPlan(v: unknown): v is Plan {
 }
 
 export function Chat() {
-  const { chain, mode } = useWalletChat();
+  const { chain, mode, btcPublicKey } = useWalletChat();
   const owner = useActiveOwner() ?? undefined;
+  const ownerPublicKey = chain === "bitcoin" ? btcPublicKey ?? undefined : undefined;
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/agent",
-        body: { chain, mode, owner },
+        body: { chain, mode, owner, ownerPublicKey },
       }),
-    [chain, mode, owner]
+    [chain, mode, owner, ownerPublicKey]
   );
 
   // Key the chat by chain+owner so switching chains starts a clean thread.

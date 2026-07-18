@@ -21,7 +21,11 @@ import {
   getEvmAccount,
   getEthereum,
 } from "@/lib/wallet/evm";
-import { connectBtc as btcConnect, getBtcAccount } from "@/lib/wallet/btc";
+import {
+  connectBtc as btcConnect,
+  getBtcAccount,
+  getBtcPublicKey,
+} from "@/lib/wallet/btc";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 // @solana/web3.js expects a Buffer global in the browser.
@@ -38,6 +42,7 @@ interface WalletChatCtx {
   evmAddress: string | null;
   connectEvm: () => Promise<void>;
   btcAddress: string | null;
+  btcPublicKey: string | null;
   connectBtc: () => Promise<void>;
 }
 
@@ -59,6 +64,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<Mode>(DEFAULT_MODE);
   const [evmAddress, setEvmAddress] = useState<string | null>(null);
   const [btcAddress, setBtcAddress] = useState<string | null>(null);
+  const [btcPublicKey, setBtcPublicKey] = useState<string | null>(null);
 
   // Solana connection follows the tier; only used when chain === "solana".
   const endpoint = useMemo(() => rpcEndpoint(mode), [mode]);
@@ -71,12 +77,18 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
   const connectBtc = useCallback(async () => {
     const a = await btcConnect();
     setBtcAddress(a);
+    setBtcPublicKey(await getBtcPublicKey());
   }, []);
 
   // Re-hydrate already-authorized EVM/BTC accounts + watch for account changes.
   useEffect(() => {
     getEvmAccount().then((a) => a && setEvmAddress(a));
-    getBtcAccount().then((a) => a && setBtcAddress(a));
+    getBtcAccount().then((a) => {
+      if (a) {
+        setBtcAddress(a);
+        getBtcPublicKey().then((pk) => pk && setBtcPublicKey(pk));
+      }
+    });
     const eth = getEthereum();
     eth?.on?.("accountsChanged", (...args: unknown[]) => {
       const accts = args[0] as string[];
@@ -92,6 +104,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     evmAddress,
     connectEvm,
     btcAddress,
+    btcPublicKey,
     connectBtc,
   };
 

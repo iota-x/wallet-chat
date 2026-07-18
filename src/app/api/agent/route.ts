@@ -45,12 +45,17 @@ ${swapLine}
 Style: concise and calm. One or two sentences around a plan is enough. If the intent is ambiguous (missing destination, token, or amount), ask one clarifying question instead of guessing.`;
 }
 
-function buildToolsForChain(chain: Chain, mode: Mode, owner: string) {
+function buildToolsForChain(
+  chain: Chain,
+  mode: Mode,
+  owner: string,
+  ownerPublicKey?: string | null
+) {
   if (chain === "ethereum") {
     return createEvmTools({ mode, owner: owner as Address });
   }
   if (chain === "bitcoin") {
-    return createBtcTools({ mode, owner });
+    return createBtcTools({ mode, owner, publicKey: ownerPublicKey });
   }
   return createTools({ connection: getConnection(mode), mode, owner: new PublicKey(owner) });
 }
@@ -72,6 +77,7 @@ export async function POST(req: Request) {
     mode?: Mode;
     chain?: Chain;
     owner?: string;
+    ownerPublicKey?: string;
   };
   try {
     body = await req.json();
@@ -108,7 +114,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const tools = buildToolsForChain(chain, mode, owner);
+  const tools = buildToolsForChain(chain, mode, owner, body.ownerPublicKey);
   const modelMessages = await convertToModelMessages(messages);
   const { model } = resolveModel();
 

@@ -186,9 +186,11 @@ chain allows it, and be honest where it doesn't.**
 ### Bitcoin (lighter, by necessity — flagged honestly)
 - UTXO chains have **no on-chain simulation and no DEX**, so there is **no exact post-state diff
   and no swaps**. Claiming otherwise would be dishonest. What Bitcoin *does* get:
-  `src/lib/btc/build.ts` selects confirmed UTXOs, builds a real PSBT (native SegWit), and previews
-  **exactly which inputs are spent and which outputs (recipient + change) are created**, with the
-  fee. Signing is client-side via Unisat.
+  `src/lib/btc/build.ts` selects confirmed UTXOs, builds a real PSBT (native SegWit **and Taproot**
+  key-path senders), and previews **exactly which inputs are spent and which outputs (recipient +
+  change) are created**, with the fee. Taproot inputs set `tapInternalKey` from the wallet's public
+  key (threaded from Unisat's `getPublicKey`, since a P2TR address alone can't yield the internal
+  key). Signing is client-side via Unisat.
 - Guardrails are **construction-based** (`src/lib/btc/plan.ts`): PSBT constructed & funded, spend
   cap (BTC + USD), fee-sanity (blocks a fee > 50% of the send), dust avoidance — and the "guardrails
   gate confirm" invariant still holds (`signable = pass && modeAllowsSigning`). The preview and the

@@ -8,12 +8,14 @@ import { assembleBtcPlan } from "@/lib/btc/plan";
 export interface BtcToolContext {
   mode: Mode;
   owner: string;
+  /** Sender public key (hex) — needed to build Taproot PSBTs. */
+  publicKey?: string | null;
 }
 
 const SATS = 100_000_000;
 
 export function createBtcTools(ctx: BtcToolContext) {
-  const { mode, owner } = ctx;
+  const { mode, owner, publicKey } = ctx;
   return {
     read_balances: tool({
       description:
@@ -63,6 +65,7 @@ export function createBtcTools(ctx: BtcToolContext) {
             toAddress: input.destination,
             amountSat,
             feeRateSatVb: feeRate,
+            senderPublicKey: publicKey,
             intentSummary: `Send ${input.amount} BTC to ${input.destination.slice(0, 6)}…${input.destination.slice(-4)}`,
           });
         } catch (e) {

@@ -3,6 +3,7 @@
 interface Unisat {
   requestAccounts(): Promise<string[]>;
   getAccounts(): Promise<string[]>;
+  getPublicKey(): Promise<string>;
   signPsbt(psbtHex: string, opts?: { autoFinalized?: boolean }): Promise<string>;
   pushPsbt(signedPsbtHex: string): Promise<string>;
 }
@@ -25,6 +26,17 @@ export async function getBtcAccount(): Promise<string | null> {
   try {
     const accts = await u.getAccounts();
     return accts?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The connected account's public key (hex) — needed for Taproot PSBTs. */
+export async function getBtcPublicKey(): Promise<string | null> {
+  const u = getUnisat();
+  if (!u) return null;
+  try {
+    return (await u.getPublicKey()) ?? null;
   } catch {
     return null;
   }

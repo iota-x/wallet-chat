@@ -39,6 +39,7 @@ export async function POST(req: Request) {
         toAddress: recipient.address,
         amountSat: recipient.valueSat,
         feeRateSatVb: plan.btc.feeRateSatVb,
+        senderPublicKey: plan.btc.senderPublicKey,
         intentSummary: plan.intentSummary,
       });
       return Response.json({ plan: fresh });

@@ -93,6 +93,7 @@ export async function assembleBtcPlan(params: {
   amountSat: number;
   feeRateSatVb: number;
   intentSummary: string;
+  senderPublicKey?: string | null;
 }): Promise<Plan> {
   const { mode, fromAddress, toAddress, amountSat, feeRateSatVb, intentSummary } =
     params;
@@ -103,6 +104,7 @@ export async function assembleBtcPlan(params: {
     toAddress,
     amountSat,
     feeRateSatVb,
+    senderPublicKey: params.senderPublicKey,
   });
   const feeSat = built.payload.feeSat;
   const price = await getBtcUsdPrice();

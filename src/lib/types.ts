@@ -148,6 +148,11 @@ export interface BtcPayload {
   outputs: BtcIo[];
   feeSat: number;
   feeRateSatVb: number;
+  /** Sender address script type, for the preview. */
+  addressType: "p2wpkh" | "p2tr";
+  /** Sender's public key (hex) — required to re-build a Taproot PSBT on re-sim.
+   * Public info, not a secret. Null for P2WPKH where it isn't needed. */
+  senderPublicKey: string | null;
 }
 
 export interface Plan {

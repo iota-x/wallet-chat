@@ -12,8 +12,9 @@ and you click confirm. Signing is client-side only; the server never sees a key.
 - **Ethereum** — full pipeline: `eth_simulateV1` + exact diff decode (Multicall3 post-state read),
   ETH/ERC-20 transfers, KyberSwap swaps, MetaMask signing. Sepolia executes; mainnet read-only.
 - **Bitcoin** — lighter by nature (UTXO chains have no simulation or DEX): real PSBT build with
-  coin selection, fee estimate, and exact input/output preview, Unisat signing. Honest about the
-  weaker guarantees — see [`DECISION_LOG.md`](./DECISION_LOG.md).
+  coin selection, fee estimate, and exact input/output preview for **native SegWit (bc1q) and
+  Taproot (bc1p)** senders, Unisat signing. Honest about the weaker guarantees — see
+  [`DECISION_LOG.md`](./DECISION_LOG.md).
 
 > The safety architecture is the point. See [`DECISION_LOG.md`](./DECISION_LOG.md) for the threat
 > model, the delegated design decisions, and the proof-of-correctness output.
