@@ -9,6 +9,8 @@ import { useActiveOwner } from "./wallet-hooks";
 import { PlanPreview } from "./PlanPreview";
 import { Balances } from "./Balances";
 import { CHAINS } from "@/lib/chains";
+import type { Conversation } from "@/lib/chat-store";
+import type { ChatContext } from "./useConversations";
 
 const SUGGESTIONS: Record<Chain, string[]> = {
   solana: [
@@ -40,7 +42,13 @@ function isPlan(v: unknown): v is Plan {
   );
 }
 
-export function Chat() {
+export function Chat({
+  conversation,
+  onSave,
+}: {
+  conversation: Conversation;
+  onSave: (id: string, messages: UIMessage[], ctx: ChatContext) => void;
+}) {
   const { chain, mode, btcPublicKey } = useWalletChat();
   const owner = useActiveOwner() ?? undefined;
   const ownerPublicKey = chain === "bitcoin" ? btcPublicKey ?? undefined : undefined;
@@ -55,7 +63,8 @@ export function Chat() {
   );
 
   const { messages, sendMessage, status, error } = useChat({
-    id: `${chain}:${owner ?? "none"}`,
+    id: conversation.id,
+    messages: conversation.messages,
     transport,
   });
   const [input, setInput] = useState("");
@@ -67,6 +76,13 @@ export function Chat() {
       behavior: "smooth",
     });
   }, [messages, status]);
+
+  // Persist the conversation once a turn settles (not on every streamed token).
+  useEffect(() => {
+    if ((status === "ready" || status === "error") && messages.length > 0) {
+      onSave(conversation.id, messages, { chain, mode, owner: owner ?? null });
+    }
+  }, [status, messages, conversation.id, chain, mode, owner, onSave]);
 
   const busy = status === "submitted" || status === "streaming";
   const disabled = !owner;

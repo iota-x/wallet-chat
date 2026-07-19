@@ -9,6 +9,7 @@ import { networkName } from "@/lib/chains";
 import { useWalletChat } from "./WalletProviders";
 import { sendEvmTx, getEthereum } from "@/lib/wallet/evm";
 import { signAndPushPsbt, getUnisat } from "@/lib/wallet/btc";
+import { recordTransaction } from "@/lib/tx-store";
 
 /**
  * THE signature element — the verification slip. A printed instrument readout
@@ -116,6 +117,19 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
         setState({ s: "sending" });
         signature = await signAndPushPsbt(fresh.btc.psbtBase64);
       }
+      recordTransaction({
+        chain: fresh.chain,
+        mode: fresh.mode,
+        kind: fresh.kind,
+        signature,
+        owner: fresh.owner,
+        summary: fresh.intentSummary,
+        delta: fresh.diff
+          .filter((d) => BigInt(d.delta) !== 0n)
+          .slice(0, 3)
+          .map((d) => `${formatSigned(d.uiDelta)} ${d.symbol}`)
+          .join(" · "),
+      });
       setState({ s: "confirmed", signature });
     } catch (e) {
       setState({ s: "error", message: (e as Error).message });
