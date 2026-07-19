@@ -41,9 +41,11 @@ interface WalletChatCtx {
   setMode: (m: Mode) => void;
   evmAddress: string | null;
   connectEvm: () => Promise<void>;
+  disconnectEvm: () => void;
   btcAddress: string | null;
   btcPublicKey: string | null;
   connectBtc: () => Promise<void>;
+  disconnectBtc: () => void;
 }
 
 const Ctx = createContext<WalletChatCtx | null>(null);
@@ -79,6 +81,13 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     setBtcAddress(a);
     setBtcPublicKey(await getBtcPublicKey());
   }, []);
+  // MetaMask/Unisat have no programmatic disconnect; we drop our local session
+  // (the app forgets the account until the user reconnects).
+  const disconnectEvm = useCallback(() => setEvmAddress(null), []);
+  const disconnectBtc = useCallback(() => {
+    setBtcAddress(null);
+    setBtcPublicKey(null);
+  }, []);
 
   // Re-hydrate already-authorized EVM/BTC accounts + watch for account changes.
   useEffect(() => {
@@ -103,9 +112,11 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     setMode,
     evmAddress,
     connectEvm,
+    disconnectEvm,
     btcAddress,
     btcPublicKey,
     connectBtc,
+    disconnectBtc,
   };
 
   return (

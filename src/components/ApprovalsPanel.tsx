@@ -7,6 +7,9 @@ import { useWalletChat } from "./WalletProviders";
 import { PlanPreview } from "./PlanPreview";
 import { shortAddr, formatUi } from "@/lib/format";
 import { getMainnetSigning, getPolicyOverride } from "@/lib/policy-store";
+import { notify } from "@/lib/toast";
+import { useModalDismiss } from "./useModalDismiss";
+import { CopyButton } from "./CopyButton";
 
 /**
  * Allowance viewer — see standing ERC-20 approvals and revoke the risky ones.
@@ -14,6 +17,7 @@ import { getMainnetSigning, getPolicyOverride } from "@/lib/policy-store";
  * through the same simulate → guardrail → confirm slip as any other plan.
  */
 export function ApprovalsPanel({ onClose }: { onClose: () => void }) {
+  useModalDismiss(onClose);
   const { chain, mode, evmAddress } = useWalletChat();
   const [state, setState] = useState<
     | { s: "idle" }
@@ -64,8 +68,10 @@ export function ApprovalsPanel({ onClose }: { onClose: () => void }) {
       const data = (await res.json()) as { plan?: Plan; error?: string };
       if (!res.ok || !data.plan) throw new Error(data.error ?? "Could not build revoke.");
       setRevoking({ plan: data.plan });
+      notify("Revoke built — review the slip and sign", "info");
     } catch (e) {
       setState({ s: "error", msg: (e as Error).message });
+      notify((e as Error).message, "error");
     } finally {
       setBusyKey(null);
     }
@@ -141,8 +147,9 @@ export function ApprovalsPanel({ onClose }: { onClose: () => void }) {
                         {amount}
                       </span>
                     </div>
-                    <div className="num text-[11px] text-ink3 mt-0.5">
-                      → {a.spenderLabel ?? "spender"} · {shortAddr(a.spender, 6)}
+                    <div className="num text-[11px] text-ink3 mt-0.5 flex items-center gap-1.5">
+                      <span>→ {a.spenderLabel ?? "spender"} · {shortAddr(a.spender, 6)}</span>
+                      <CopyButton value={a.spender} label="spender" />
                     </div>
                   </div>
                   <button

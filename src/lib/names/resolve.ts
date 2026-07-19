@@ -50,6 +50,16 @@ export async function resolveEnsName(name: string): Promise<string | null> {
   }
 }
 
+/** Reverse ENS: 0x address → primary name, or null. Best-effort, for display. */
+export async function reverseEnsName(address: string): Promise<string | null> {
+  try {
+    const name = await ens().getEnsName({ address: address as `0x${string}` });
+    return name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 const SNS_RESOLVER = "https://sns-sdk-proxy.bonfida.workers.dev/resolve";
 
 /** Resolve name.sol → base58 owner, or null if unregistered / unresolvable. */

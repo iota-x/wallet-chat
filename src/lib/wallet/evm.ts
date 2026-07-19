@@ -28,6 +28,28 @@ export async function getEvmAccount(): Promise<string | null> {
   return accts?.[0] ?? null;
 }
 
+/** The wallet's currently-selected chain id, or null if unavailable. */
+export async function getEvmChainId(): Promise<number | null> {
+  const eth = getEthereum();
+  if (!eth) return null;
+  try {
+    const hex = (await eth.request({ method: "eth_chainId" })) as string;
+    return parseInt(hex, 16);
+  } catch {
+    return null;
+  }
+}
+
+/** Ask the wallet to switch to the tier's chain (mainnet or Sepolia). */
+export async function switchEvmChain(mode: Mode): Promise<void> {
+  const eth = getEthereum();
+  if (!eth) throw new Error("No Ethereum wallet.");
+  await eth.request({
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId: numberToHex(evmChainId(mode)) }],
+  });
+}
+
 async function ensureChain(mode: Mode): Promise<void> {
   const eth = getEthereum();
   if (!eth) throw new Error("No Ethereum wallet.");

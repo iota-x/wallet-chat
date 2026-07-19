@@ -10,8 +10,12 @@ import {
   removeEntry,
   type AddressEntry,
 } from "@/lib/address-book";
+import { notify } from "@/lib/toast";
+import { useModalDismiss } from "./useModalDismiss";
+import { CopyButton } from "./CopyButton";
 
 export function AddressBookPanel({ onClose }: { onClose: () => void }) {
+  useModalDismiss(onClose);
   const { chain } = useWalletChat();
   const [entries, setEntries] = useState<AddressEntry[]>([]);
   const [label, setLabel] = useState("");
@@ -24,12 +28,14 @@ export function AddressBookPanel({ onClose }: { onClose: () => void }) {
     if (!label.trim() || !address.trim()) return;
     addEntry({ label, address, chain });
     setEntries(listEntries());
+    notify(`Saved “${label.trim()}” to your address book`, "success");
     setLabel("");
     setAddress("");
   }
   function del(id: string) {
     removeEntry(id);
     setEntries(listEntries());
+    notify("Address removed", "info");
   }
 
   return (
@@ -98,6 +104,7 @@ export function AddressBookPanel({ onClose }: { onClose: () => void }) {
               <span className="text-[13px] text-ink font-medium">{en.label}</span>
               <span className="flex-1" />
               <span className="num text-[11px] text-ink3">{shortAddr(en.address, 6)}</span>
+              <CopyButton value={en.address} label="address" />
               <button
                 onClick={() => del(en.id)}
                 aria-label="Delete"

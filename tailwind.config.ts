@@ -81,6 +81,10 @@ const config: Config = {
           "0%": { opacity: "0", transform: "scale(0.92)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        "toast-in": {
+          "0%": { opacity: "0", transform: "translateY(10px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
       },
       animation: {
         "rise-in": "rise-in 0.7s cubic-bezier(0.16,1,0.3,1) both",
@@ -95,6 +99,7 @@ const config: Config = {
         shimmer: "shimmer 1.6s infinite",
         "bloom-pulse": "bloom-pulse 11s ease-in-out infinite",
         "atmos-in": "atmos-in 1.4s cubic-bezier(0.16,1,0.3,1) both",
+        "toast-in": "toast-in 0.28s cubic-bezier(0.16,1,0.3,1) both",
       },
     },
   },

@@ -5,10 +5,12 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletChat } from "./WalletProviders";
 import { fetchPortfolio, type ChainHoldings } from "@/lib/portfolio";
 import { formatUi, formatUsd } from "@/lib/format";
+import { useModalDismiss } from "./useModalDismiss";
 
 const ALLOC_COLORS = ["#D51EA6", "#B4A4E4", "#8E97E8", "#E6A15C", "#149A63", "#8B8794"];
 
 export function PortfolioPanel({ onClose }: { onClose: () => void }) {
+  useModalDismiss(onClose);
   const { publicKey } = useWallet();
   const { evmAddress, btcAddress, mode } = useWalletChat();
   const [loading, setLoading] = useState(true);

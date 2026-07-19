@@ -10,6 +10,8 @@ import { useWalletChat } from "./WalletProviders";
 import { sendEvmTx, getEthereum } from "@/lib/wallet/evm";
 import { signAndPushPsbt, getUnisat } from "@/lib/wallet/btc";
 import { recordTransaction, listTransactions } from "@/lib/tx-store";
+import { notify } from "@/lib/toast";
+import { CopyButton } from "./CopyButton";
 import { getMainnetSigning, getPolicySettings } from "@/lib/policy-store";
 import { listEntries } from "@/lib/address-book";
 import { screenRecipient, type KnownAddress, type RecipientVerdict } from "@/lib/security/recipient";
@@ -123,6 +125,7 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
           message:
             "State moved — this plan is no longer safe to sign. Review the updated slip and ask again.",
         });
+        notify("Chain state moved — plan is no longer signable", "error");
         return;
       }
 
@@ -176,8 +179,13 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
           .join(" · "),
       });
       setState({ s: "confirmed", signature });
+      notify(
+        fresh.chain === "solana" ? "Transaction confirmed" : "Transaction broadcast",
+        "success"
+      );
     } catch (e) {
       setState({ s: "error", message: (e as Error).message });
+      notify((e as Error).message || "Signing failed", "error");
     }
   }
 
@@ -604,14 +612,17 @@ function ConfirmZone({
         <div className="font-mono text-[11px] tracking-label uppercase text-pos">
           ✓ broadcast · {plan.chain} {plan.mode}
         </div>
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="num text-[11px] text-magenta hover:underline break-all"
-        >
-          {shortAddr(state.signature, 8)} ↗
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="num text-[11px] text-magenta hover:underline break-all"
+          >
+            {shortAddr(state.signature, 8)} ↗
+          </a>
+          <CopyButton value={state.signature} label="signature" />
+        </div>
       </div>
     );
   }

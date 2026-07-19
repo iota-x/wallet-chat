@@ -10,6 +10,8 @@ import {
   POLICY_DEFAULTS,
   type PolicySettings,
 } from "@/lib/policy-store";
+import { notify } from "@/lib/toast";
+import { useModalDismiss } from "./useModalDismiss";
 
 interface Field {
   key: keyof PolicySettings;
@@ -83,6 +85,7 @@ const FIELDS: Field[] = [
 ];
 
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
+  useModalDismiss(onClose);
   const [settings, setSettings] = useState<PolicySettings>(() => getPolicySettings());
   const [signing, setSigning] = useState<boolean>(() => getMainnetSigning());
 
@@ -94,6 +97,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   function reset() {
     resetPolicy();
     setSettings({ ...POLICY_DEFAULTS });
+    notify("Guardrails reset to defaults", "success");
   }
 
   const isDefault =
@@ -151,6 +155,12 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                   const v = !signing;
                   setSigning(v);
                   setMainnetSigning(v);
+                  notify(
+                    v
+                      ? "Mainnet signing ON — confirmed plans will move real funds"
+                      : "Mainnet signing off — mainnet is read-only",
+                    v ? "info" : "success"
+                  );
                 }}
                 className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   signing ? "bg-neg" : "bg-line"

@@ -3,6 +3,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { notify } from "@/lib/toast";
 import type { Chain, Plan } from "@/lib/types";
 import { useWalletChat } from "./WalletProviders";
 import { useActiveOwner } from "./wallet-hooks";
@@ -88,19 +91,31 @@ export function Chat({
     [chain, mode, owner, ownerPublicKey, settingsV]
   );
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error, stop, regenerate } = useChat({
     id: conversation.id,
     messages: conversation.messages,
     transport,
   });
   const [input, setInput] = useState("");
+  const [atBottom, setAtBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  function scrollToLatest() {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
+  }
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  }
+
+  // Auto-follow the stream only when the reader is already at the bottom.
+  useEffect(() => {
+    if (atBottom) scrollToLatest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, status]);
 
   // Persist the conversation once a turn settles (not on every streamed token).
@@ -120,13 +135,26 @@ export function Chat({
     setInput("");
   }
 
+  const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id;
+
   return (
     <div className="flex flex-col h-full">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden py-5 space-y-5">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="flex-1 overflow-y-auto overflow-x-hidden py-5 space-y-5"
+      >
         {messages.length === 0 ? (
           <EmptyState disabled={disabled} onPick={submit} suggestions={SUGGESTIONS[chain]} />
         ) : (
-          messages.map((m) => <MessageBlock key={m.id} message={m} />)
+          messages.map((m) => (
+            <MessageBlock
+              key={m.id}
+              message={m}
+              canRegenerate={m.id === lastAssistantId && !busy}
+              onRegenerate={() => regenerate()}
+            />
+          ))
         )}
         {busy && <Thinking />}
         {error && (
@@ -142,8 +170,18 @@ export function Chat({
           e.preventDefault();
           submit(input);
         }}
-        className="pb-2"
+        className="relative pb-2"
       >
+        {!atBottom && messages.length > 0 && (
+          <button
+            type="button"
+            onClick={scrollToLatest}
+            aria-label="Scroll to latest"
+            className="absolute -top-11 left-1/2 -translate-x-1/2 z-10 h-8 w-8 grid place-items-center rounded-full border border-line bg-paper2 text-ink2 shadow-lg hover:border-magenta hover:text-ink transition-colors"
+          >
+            ↓
+          </button>
+        )}
         <div className="flex items-end gap-2 rounded-xl border border-line bg-paper2/80 focus-within:border-magenta/50 transition-colors px-3 py-2">
           <span className="font-mono text-magenta text-sm pb-2.5 select-none">›</span>
           <textarea
@@ -161,32 +199,131 @@ export function Chat({
             aria-label="Message"
             className="flex-1 resize-none bg-transparent py-2 text-sm outline-none focus:outline-none focus-visible:outline-none placeholder:text-ink3 max-h-40 disabled:opacity-50"
           />
-          <button
-            type="submit"
-            disabled={disabled || busy || !input.trim()}
-            className="shrink-0 rounded-lg bg-magenta text-paper h-9 w-9 grid place-items-center font-mono text-base disabled:bg-haze disabled:text-ink3 transition-colors hover:bg-ink"
-            aria-label="Send"
-          >
-            ↵
-          </button>
+          {busy ? (
+            <button
+              type="button"
+              onClick={() => stop()}
+              className="shrink-0 rounded-lg bg-ink text-paper h-9 w-9 grid place-items-center font-mono text-xs transition-colors hover:bg-magenta"
+              aria-label="Stop generating"
+            >
+              ■
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={disabled || !input.trim()}
+              className="shrink-0 rounded-lg bg-magenta text-paper h-9 w-9 grid place-items-center font-mono text-base disabled:bg-haze disabled:text-ink3 transition-colors hover:bg-ink"
+              aria-label="Send"
+            >
+              ↵
+            </button>
+          )}
         </div>
       </form>
     </div>
   );
 }
 
-function MessageBlock({ message }: { message: UIMessage }) {
+function MessageBlock({
+  message,
+  canRegenerate,
+  onRegenerate,
+}: {
+  message: UIMessage;
+  canRegenerate: boolean;
+  onRegenerate: () => void;
+}) {
   const isUser = message.role === "user";
+  const text = message.parts
+    .filter((p) => p.type === "text")
+    .map((p) => (p as { text: string }).text)
+    .join("\n")
+    .trim();
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[93%] sm:max-w-[86%] min-w-0 space-y-3 ${isUser ? "items-end" : ""}`}>
+    <div className={`group flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div className={`max-w-[93%] sm:max-w-[86%] min-w-0 space-y-2 ${isUser ? "flex flex-col items-end" : ""}`}>
         {message.parts.map((part, i) => (
           <PartView key={i} part={part} isUser={isUser} />
         ))}
+        {(text || canRegenerate) && (
+          <MessageActions
+            text={text}
+            isUser={isUser}
+            canRegenerate={canRegenerate}
+            onRegenerate={onRegenerate}
+          />
+        )}
       </div>
     </div>
   );
 }
+
+function MessageActions({
+  text,
+  isUser,
+  canRegenerate,
+  onRegenerate,
+}: {
+  text: string;
+  isUser: boolean;
+  canRegenerate: boolean;
+  onRegenerate: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity ${
+        isUser ? "justify-end" : "justify-start"
+      }`}
+    >
+      {text && (
+        <button
+          onClick={() => {
+            navigator.clipboard?.writeText(text);
+            notify("Copied message", "success");
+          }}
+          className="font-mono text-[10px] text-ink3 hover:text-ink px-1.5 py-0.5 rounded transition-colors"
+        >
+          copy
+        </button>
+      )}
+      {canRegenerate && (
+        <button
+          onClick={onRegenerate}
+          className="font-mono text-[10px] text-ink3 hover:text-ink px-1.5 py-0.5 rounded transition-colors"
+        >
+          regenerate
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Markdown mapped to the app's type scale — so lists, code, and links render. */
+const MD: Components = {
+  p: ({ node, ...p }) => <p className="my-1.5 first:mt-0 last:mb-0" {...p} />,
+  a: ({ node, ...p }) => (
+    <a className="text-magenta underline underline-offset-2 break-words" target="_blank" rel="noreferrer" {...p} />
+  ),
+  ul: ({ node, ...p }) => <ul className="my-1.5 list-disc pl-5 space-y-0.5" {...p} />,
+  ol: ({ node, ...p }) => <ol className="my-1.5 list-decimal pl-5 space-y-0.5" {...p} />,
+  li: ({ node, ...p }) => <li className="marker:text-ink3" {...p} />,
+  strong: ({ node, ...p }) => <strong className="font-semibold text-ink" {...p} />,
+  h1: ({ node, ...p }) => <h3 className="mt-2 mb-1 text-[15px] font-semibold text-ink" {...p} />,
+  h2: ({ node, ...p }) => <h3 className="mt-2 mb-1 text-[14px] font-semibold text-ink" {...p} />,
+  h3: ({ node, ...p }) => <h3 className="mt-2 mb-1 text-[13px] font-semibold text-ink" {...p} />,
+  code: ({ node, ...p }) => (
+    <code className="font-mono text-[0.85em] bg-haze rounded px-1 py-0.5" {...p} />
+  ),
+  pre: ({ node, ...p }) => (
+    <pre
+      className="my-2 overflow-x-auto rounded-lg border border-line bg-paper2 p-3 text-[12px] leading-relaxed [&_code]:bg-transparent [&_code]:p-0"
+      {...p}
+    />
+  ),
+  blockquote: ({ node, ...p }) => (
+    <blockquote className="my-1.5 border-l-2 border-line pl-3 text-ink3" {...p} />
+  ),
+};
 
 function PartView({
   part,
@@ -203,8 +340,10 @@ function PartView({
         {text}
       </div>
     ) : (
-      <div className="text-sm leading-relaxed text-ink2 whitespace-pre-wrap break-words px-0.5">
-        {text}
+      <div className="text-sm leading-relaxed text-ink2 break-words px-0.5">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD}>
+          {text}
+        </ReactMarkdown>
       </div>
     );
   }

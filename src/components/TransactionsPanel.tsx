@@ -5,15 +5,16 @@ import {
   listTransactions,
   clearTransactions,
   updateTxStatus,
-  setReconciliation,
   explorerUrl,
   type TxRecord,
-  type ReconcileDelta,
 } from "@/lib/tx-store";
 import { checkTxStatus } from "@/lib/tx-status";
-import { compareDeltas } from "@/lib/reconcile";
+import { runReconcile } from "@/lib/reconcile-run";
 import { CHAINS } from "@/lib/chains";
 import { shortAddr } from "@/lib/format";
+import { notify } from "@/lib/toast";
+import { useModalDismiss } from "./useModalDismiss";
+import { CopyButton } from "./CopyButton";
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -39,38 +40,6 @@ function StatusPill({ status }: { status: TxRecord["status"] }) {
   );
 }
 
-/** Fetch actual on-chain movement and diff it against the stored prediction. */
-async function reconcile(t: TxRecord, inFlight: Set<string>) {
-  inFlight.add(t.id);
-  try {
-    if (t.chain === "bitcoin") {
-      setReconciliation(t.id, {
-        status: "unavailable",
-        note: "Bitcoin has no post-state to diff — the broadcast matches the PSBT preview by construction.",
-        at: Date.now(),
-      });
-      return;
-    }
-    const res = await fetch("/api/reconcile", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chain: t.chain, mode: t.mode, signature: t.signature, owner: t.owner }),
-    });
-    const data = (await res.json()) as { actual?: ReconcileDelta[] | null };
-    if (!res.ok || !data.actual) return; // not indexed yet — retry next tick
-    const cmp = compareDeltas(t.predicted ?? [], data.actual);
-    const note =
-      cmp.status === "matched"
-        ? "Reality matched the simulated diff to within tolerance."
-        : "Drift — " + cmp.lines.filter((l) => l.startsWith("✕")).join(" · ");
-    setReconciliation(t.id, { status: cmp.status, note, at: Date.now() });
-  } catch {
-    /* transient — retry next tick */
-  } finally {
-    inFlight.delete(t.id);
-  }
-}
-
 function ReconcileBadge({ r }: { r: NonNullable<TxRecord["reconciliation"]> }) {
   const map = {
     matched: { c: "text-pos border-pos/40", t: "✓ verified", },
@@ -88,6 +57,7 @@ function ReconcileBadge({ r }: { r: NonNullable<TxRecord["reconciliation"]> }) {
 }
 
 export function TransactionsPanel({ onClose }: { onClose: () => void }) {
+  useModalDismiss(onClose);
   const [txns, setTxns] = useState<TxRecord[]>([]);
 
   useEffect(() => setTxns(listTransactions()), []);
@@ -112,7 +82,7 @@ export function TransactionsPanel({ onClose }: { onClose: () => void }) {
       const toReconcile = listTransactions().filter(
         (t) => t.status === "confirmed" && t.predicted && !t.reconciliation && !reconciling.has(t.id)
       );
-      await Promise.all(toReconcile.map((t) => reconcile(t, reconciling)));
+      await Promise.all(toReconcile.map((t) => runReconcile(t, reconciling)));
       if (!cancelled) setTxns(listTransactions());
     }
 
@@ -141,6 +111,7 @@ export function TransactionsPanel({ onClose }: { onClose: () => void }) {
                 onClick={() => {
                   clearTransactions();
                   setTxns([]);
+                  notify("Transaction history cleared", "info");
                 }}
                 className="font-mono text-[11px] text-ink3 hover:text-neg transition-colors"
               >
@@ -186,6 +157,7 @@ export function TransactionsPanel({ onClose }: { onClose: () => void }) {
                 {t.reconciliation && <ReconcileBadge r={t.reconciliation} />}
                 {t.delta && <span className="num text-[11px] text-ink2">{t.delta}</span>}
                 <span className="flex-1" />
+                <CopyButton value={t.signature} label="signature" />
                 <span className="num text-[11px] text-magenta">
                   {shortAddr(t.signature, 6)} ↗
                 </span>

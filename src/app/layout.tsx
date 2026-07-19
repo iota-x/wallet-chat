@@ -19,10 +19,23 @@ const mono = IBM_Plex_Mono({
   display: "swap",
 });
 
+const DESCRIPTION =
+  "State an intent in plain language across Solana, Ethereum, and Bitcoin. The agent plans it, simulates against live chain state, and prints a verification slip with the exact balance diff. Nothing signs until guardrails pass and you arm it.";
+
 export const metadata: Metadata = {
   title: "WalletChat — the transaction verifier",
-  description:
-    "State an intent in plain language across Solana, Ethereum, and Bitcoin. The agent plans it, simulates against live chain state, and prints a verification slip with the exact balance diff. Nothing signs until guardrails pass and you arm it.",
+  description: DESCRIPTION,
+  applicationName: "WalletChat",
+  openGraph: {
+    title: "WalletChat — the transaction verifier",
+    description: DESCRIPTION,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "WalletChat — the transaction verifier",
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

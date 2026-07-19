@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useWalletChat } from "./WalletProviders";
 import { useActiveOwner } from "./wallet-hooks";
 import { useConversations } from "./useConversations";
+import { useTxWatcher } from "./useTxWatcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { ChatSidebar } from "./ChatSidebar";
 import { TransactionsPanel } from "./TransactionsPanel";
@@ -18,6 +19,8 @@ import type { Chain, Mode } from "@/lib/types";
 import { CHAINS, networkName } from "@/lib/chains";
 import { shortAddr } from "@/lib/format";
 import { getMainnetSigning, POLICY_EVENT } from "@/lib/policy-store";
+import { notify } from "@/lib/toast";
+import { AccountChip } from "./AccountChip";
 
 const WalletMultiButton = dynamic(
   () =>
@@ -29,6 +32,7 @@ export function App() {
   const { chain, setChain, mode, setMode } = useWalletChat();
   const owner = useActiveOwner();
   const convos = useConversations();
+  useTxWatcher();
   const [drawer, setDrawer] = useState(false);
   const [signingOn, setSigningOn] = useState(false);
   const [panel, setPanel] = useState<
@@ -267,15 +271,17 @@ function ConnectArea() {
   }
 
   const addr = chain === "ethereum" ? evmAddress : btcAddress;
+  if (addr) return <AccountChip chain={chain} />;
+
   const onClick = chain === "ethereum" ? connectEvm : connectBtc;
   const label = chain === "ethereum" ? "Connect MetaMask" : "Connect Unisat";
 
   return (
     <button
-      onClick={() => onClick().catch((e) => alert(e.message))}
+      onClick={() => onClick().catch((e) => notify(e.message, "error"))}
       className="h-9 rounded-lg bg-haze border border-line px-3 text-[12px] font-mono text-ink hover:border-magenta transition-colors"
     >
-      {addr ? shortAddr(addr, 5) : label}
+      {label}
     </button>
   );
 }
