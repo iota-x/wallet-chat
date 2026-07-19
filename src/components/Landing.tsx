@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { GlassArtifact } from "./GlassArtifact";
+import { GlassHero } from "./GlassHero";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
@@ -82,9 +82,7 @@ function Hero() {
 
         {/* Right — the glass artifact, annotated */}
         <div className="relative">
-          <div className="animate-glass-float">
-            <GlassArtifact />
-          </div>
+          <GlassHero />
           <AnnotationLayer />
         </div>
       </div>

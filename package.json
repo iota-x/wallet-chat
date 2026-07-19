@@ -20,6 +20,8 @@
     "@ai-sdk/groq": "^3.0.53",
     "@ai-sdk/react": "^3.0.230",
     "@bitcoinerlab/secp256k1": "^1.2.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "@solana/spl-token": "^0.4.9",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-react": "^0.15.35",
@@ -32,6 +34,7 @@
     "next": "15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "three": "^0.171.0",
     "viem": "^2.55.2",
     "zod": "^3.24.1"
   },
