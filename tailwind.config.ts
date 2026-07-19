@@ -77,6 +77,10 @@ const config: Config = {
           "0%,100%": { opacity: "0.55", transform: "scale(1)" },
           "50%": { opacity: "0.78", transform: "scale(1.05)" },
         },
+        "atmos-in": {
+          "0%": { opacity: "0", transform: "scale(0.92)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         "rise-in": "rise-in 0.7s cubic-bezier(0.16,1,0.3,1) both",
@@ -90,6 +94,7 @@ const config: Config = {
         blink: "blink 1.1s step-end infinite",
         shimmer: "shimmer 1.6s infinite",
         "bloom-pulse": "bloom-pulse 11s ease-in-out infinite",
+        "atmos-in": "atmos-in 1.4s cubic-bezier(0.16,1,0.3,1) both",
       },
     },
   },

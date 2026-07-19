@@ -50,7 +50,11 @@ function Hero() {
     <section className="grain relative overflow-hidden">
       {/* Atmosphere — soft lavender bloom + warm accent behind the artwork,
           and a gentle vignette. Depth, not glow. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 animate-atmos-in"
+        style={{ animationDelay: "0.1s" }}
+      >
         <div
           className="absolute right-[2%] top-[8%] h-[64vh] w-[64vh] rounded-full blur-[120px] animate-bloom-pulse"
           style={{
@@ -118,9 +122,11 @@ function Hero() {
 
           {/* Right — the glass artifact (breathes, leans to your pointer), annotated */}
           <div className="relative animate-rise-in" style={{ animationDelay: "0.2s" }}>
-            <ReflectedLight />
-            <InteractiveGlass />
-            <AnnotationLayer />
+            <div className="relative lg:scale-[1.14] origin-center">
+              <ReflectedLight />
+              <InteractiveGlass />
+              <AnnotationLayer />
+            </div>
           </div>
         </div>
       </div>
@@ -152,13 +158,14 @@ function AnnotationLayer() {
         preserveAspectRatio="none"
         aria-hidden
       >
+        {/* connectors stop at the crystal's outer edge rather than crossing it */}
         <line
-          x1="70" y1="70" x2="205" y2="180"
+          x1="70" y1="70" x2="150" y2="146"
           stroke="#D51EA6" strokeWidth="1" strokeDasharray="220"
           className="animate-draw-line"
         />
         <line
-          x1="330" y1="322" x2="215" y2="215"
+          x1="330" y1="322" x2="262" y2="258"
           stroke="#D51EA6" strokeWidth="1" strokeDasharray="220"
           className="animate-draw-line"
         />
