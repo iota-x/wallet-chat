@@ -49,22 +49,37 @@ function Hero() {
   return (
     <section className="mx-auto max-w-6xl px-5 sm:px-8 pt-8 sm:pt-14 pb-20">
       <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 items-center">
-        {/* Left — the thesis */}
-        <div className="relative z-10 animate-rise-in">
-          <div className="eyebrow">agentic wallet · transaction verifier</div>
+        {/* Left — the thesis, revealed as a staggered load sequence */}
+        <div className="relative z-10">
+          <div className="eyebrow animate-rise-in" style={{ animationDelay: "0.05s" }}>
+            agentic wallet · transaction verifier
+          </div>
           <h1 className="mt-5 font-sans font-black tracking-tight2 leading-[0.95] text-ink text-[clamp(2.7rem,8vw,5.3rem)]">
-            Every
-            <br />
-            transaction,
-            <br />
-            <span className="glass-text">made&nbsp;transparent.</span>
+            <span className="block animate-rise-in" style={{ animationDelay: "0.14s" }}>
+              Every
+            </span>
+            <span className="block animate-rise-in" style={{ animationDelay: "0.22s" }}>
+              transaction,
+            </span>
+            <span
+              className="block glass-text animate-rise-in"
+              style={{ animationDelay: "0.3s" }}
+            >
+              made&nbsp;transparent.
+            </span>
           </h1>
-          <p className="mt-6 max-w-md text-[15px] leading-relaxed text-ink2">
+          <p
+            className="mt-6 max-w-md text-[15px] leading-relaxed text-ink2 animate-rise-in"
+            style={{ animationDelay: "0.44s" }}
+          >
             State an intent in plain English. WalletChat plans it, simulates it
             against live chain state, and shows the exact balance diff — nothing
             signs until the guardrails pass and you arm it.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div
+            className="mt-8 flex flex-wrap items-center gap-3 animate-rise-in"
+            style={{ animationDelay: "0.56s" }}
+          >
             <Link
               href="/app"
               className="font-mono text-[13px] rounded-full bg-magenta text-paper px-6 py-3 hover:bg-ink transition-colors"
@@ -80,8 +95,8 @@ function Hero() {
           </div>
         </div>
 
-        {/* Right — the glass artifact (tilts to your pointer), annotated */}
-        <div className="relative">
+        {/* Right — the glass artifact (breathes, leans to your pointer), annotated */}
+        <div className="relative animate-rise-in" style={{ animationDelay: "0.2s" }}>
           <InteractiveGlass />
           <AnnotationLayer />
         </div>
