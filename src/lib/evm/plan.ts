@@ -73,6 +73,7 @@ export interface AssembleEvmParams {
   route: SwapRoute | null;
   quote: Freshness | null;
   policyOverride?: PolicyOverride;
+  allowMainnetSign?: boolean;
 }
 
 export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> {
@@ -111,11 +112,14 @@ export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> 
     },
   });
 
-  const signable = simulation.success && guardrail.pass && modeAllowsSigning(mode);
+  const canSign = modeAllowsSigning(mode, params.allowMainnetSign);
+  const signable = simulation.success && guardrail.pass && canSign;
   const warnings: string[] = [...guardrail.warnings];
-  if (!modeAllowsSigning(mode)) {
+  if (mode === "mainnet") {
     warnings.push(
-      "Ethereum mainnet is read-only in this demo: the plan, simulation and diff are real, but signing is disabled."
+      params.allowMainnetSign
+        ? "⚠ Mainnet signing is ON — confirming will broadcast a real transaction and move real funds."
+        : "Ethereum mainnet is read-only: the plan, simulation and diff are real, but signing is disabled. Turn on mainnet signing in guardrail settings to enable it."
     );
   }
   if (!simulation.success) warnings.push("Simulation failed — see logs below.");
@@ -149,7 +153,10 @@ export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> 
   };
 }
 
-export async function resimulateEvmPlan(plan: Plan): Promise<Plan> {
+export async function resimulateEvmPlan(
+  plan: Plan,
+  allowMainnetSign = false
+): Promise<Plan> {
   if (plan.chain !== "ethereum" || !plan.evmTx) {
     throw new Error("resimulateEvmPlan only handles Ethereum plans.");
   }
@@ -174,5 +181,6 @@ export async function resimulateEvmPlan(plan: Plan): Promise<Plan> {
     targets: plan.route ? [plan.evmTx.to.toLowerCase()] : targets,
     route: plan.route,
     quote: plan.quote,
+    allowMainnetSign,
   });
 }

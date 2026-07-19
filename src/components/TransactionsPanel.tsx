@@ -65,7 +65,7 @@ export function TransactionsPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-ink/25" onClick={onClose} />
       <div className="relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-2xl border border-line bg-paper2 shadow-2xl animate-fade-up">
         <div className="flex items-center justify-between px-4 py-3 border-b border-line/70">
           <div>

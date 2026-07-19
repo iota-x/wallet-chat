@@ -16,6 +16,7 @@ import { Chat } from "./Chat";
 import type { Chain, Mode } from "@/lib/types";
 import { CHAINS, networkName } from "@/lib/chains";
 import { shortAddr } from "@/lib/format";
+import { getMainnetSigning, POLICY_EVENT } from "@/lib/policy-store";
 
 const WalletMultiButton = dynamic(
   () =>
@@ -28,11 +29,44 @@ export function App() {
   const owner = useActiveOwner();
   const convos = useConversations();
   const [drawer, setDrawer] = useState(false);
+  const [signingOn, setSigningOn] = useState(false);
   const [panel, setPanel] = useState<
     null | "portfolio" | "transactions" | "addresses" | "settings"
   >(null);
 
   const ctx = { chain, mode, owner: owner ?? null };
+
+  // Sidebar open state persists (default: open on desktop, closed on mobile).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("wc-sidebar");
+      const desktop = window.matchMedia("(min-width: 768px)").matches;
+      setDrawer(saved != null ? saved === "1" : desktop);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function toggleDrawer(v: boolean) {
+    setDrawer(v);
+    try {
+      localStorage.setItem("wc-sidebar", v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+  function closeOnMobile() {
+    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 768px)").matches) {
+      setDrawer(false);
+    }
+  }
+
+  // Reflect the mainnet-signing switch in the header status.
+  useEffect(() => {
+    const sync = () => setSigningOn(getMainnetSigning());
+    sync();
+    window.addEventListener(POLICY_EVENT, sync);
+    return () => window.removeEventListener(POLICY_EVENT, sync);
+  }, []);
 
   // Ensure there's an active chat once history has hydrated.
   useEffect(() => {
@@ -55,81 +89,92 @@ export function App() {
 
   function selectConversation(id: string) {
     convos.select(id);
-    setDrawer(false);
+    closeOnMobile();
   }
   function startNew() {
     convos.newChat(ctx);
-    setDrawer(false);
+    closeOnMobile();
   }
 
+  const sidebar = (
+    <ChatSidebar
+      conversations={history}
+      activeId={convos.activeId}
+      onNew={startNew}
+      onSelect={selectConversation}
+      onDelete={convos.remove}
+      onOpen={(p) => {
+        setPanel(p);
+        closeOnMobile();
+      }}
+    />
+  );
+
   return (
-    <div className="h-dvh flex flex-col">
-      <header className="shrink-0 border-b border-line/70 px-3 sm:px-4 py-2.5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={() => setDrawer(true)}
-              aria-label="Open conversations"
-              className="h-8 w-8 grid place-items-center rounded-lg border border-line text-ink2 hover:border-magenta hover:text-ink transition-colors"
-            >
-              ☰
-            </button>
-            <Link href="/" className="hidden sm:flex items-center gap-2 group">
-              <GlassMark />
-              <span className="font-mono text-[13px] text-ink group-hover:text-magenta transition-colors">
-                walletchat
-              </span>
-            </Link>
-            <span className="hidden md:block h-4 w-px bg-line" />
-            <div className="flex items-center gap-2 flex-wrap">
-              <ChainSelector chain={chain} setChain={setChain} />
-              <span className="h-4 w-px bg-line hidden sm:block" />
-              <ModeToggle mode={mode} setMode={setMode} chain={chain} />
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <StatusReadout owner={owner} chain={chain} mode={mode} />
-            <ThemeToggle />
-            <ConnectArea />
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 min-h-0 px-4">
-        <div className="max-w-2xl mx-auto h-full">
-          {convos.active ? (
-            <Chat
-              key={convos.active.id}
-              conversation={convos.active}
-              onSave={convos.saveMessages}
-            />
-          ) : null}
-        </div>
-      </main>
-
-      {/* Toggle-able conversation drawer (closed on load — chat only). */}
+    <div className="h-dvh flex overflow-hidden">
+      {/* Desktop: a persistent push sidebar — content sits beside it, no dim. */}
       {drawer && (
-        <div className="fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
-            onClick={() => setDrawer(false)}
-          />
+        <aside className="hidden md:flex w-64 shrink-0 border-r border-line/70 flex-col bg-paper2/40">
+          <SidebarBrand onClose={() => toggleDrawer(false)} />
+          {sidebar}
+        </aside>
+      )}
+
+      {/* Mobile: an overlay drawer (there's no room to push). */}
+      {drawer && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-ink/30" onClick={() => setDrawer(false)} />
           <aside className="absolute left-0 top-0 h-full w-72 bg-paper border-r border-line flex flex-col animate-fade-up">
             <SidebarBrand onClose={() => setDrawer(false)} />
-            <ChatSidebar
-              conversations={history}
-              activeId={convos.activeId}
-              onNew={startNew}
-              onSelect={selectConversation}
-              onDelete={convos.remove}
-              onOpen={(p) => {
-                setPanel(p);
-                setDrawer(false);
-              }}
-            />
+            {sidebar}
           </aside>
         </div>
       )}
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="shrink-0 border-b border-line/70 px-3 sm:px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={() => toggleDrawer(!drawer)}
+                aria-label="Toggle conversations"
+                className="h-8 w-8 grid place-items-center rounded-lg border border-line text-ink2 hover:border-magenta hover:text-ink transition-colors"
+              >
+                ☰
+              </button>
+              <Link href="/" className="hidden sm:flex items-center gap-2 group">
+                <GlassMark />
+                <span className="font-mono text-[13px] text-ink group-hover:text-magenta transition-colors">
+                  walletchat
+                </span>
+              </Link>
+              <span className="hidden md:block h-4 w-px bg-line" />
+              <div className="flex items-center gap-2 flex-wrap">
+                <ChainSelector chain={chain} setChain={setChain} />
+                <span className="h-4 w-px bg-line hidden sm:block" />
+                <ModeToggle mode={mode} setMode={setMode} chain={chain} />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <StatusReadout owner={owner} chain={chain} mode={mode} signingOn={signingOn} />
+              <ThemeToggle />
+              <ConnectArea />
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 min-h-0 px-4">
+          <div className="max-w-2xl mx-auto h-full">
+            {convos.active ? (
+              <Chat
+                key={convos.active.id}
+                conversation={convos.active}
+                onSave={convos.saveMessages}
+              />
+            ) : null}
+          </div>
+        </main>
+      </div>
 
       {panel === "portfolio" && <PortfolioPanel onClose={() => setPanel(null)} />}
       {panel === "transactions" && <TransactionsPanel onClose={() => setPanel(null)} />}
@@ -180,11 +225,20 @@ function StatusReadout({
   owner,
   chain,
   mode,
+  signingOn,
 }: {
   owner: string | null;
   chain: Chain;
   mode: Mode;
+  signingOn: boolean;
 }) {
+  // devnet → live · mainnet+off → read-only · mainnet+on → signing (armed).
+  const tier =
+    mode === "mainnet"
+      ? signingOn
+        ? { label: "signing", cls: "border-neg/50 text-neg bg-neg/[0.06]" }
+        : { label: "read-only", cls: "border-line text-ink3" }
+      : { label: "live", cls: "border-magenta/30 text-magenta" };
   return (
     <div className="hidden sm:flex items-center gap-2 pr-1">
       <span
@@ -194,12 +248,10 @@ function StatusReadout({
         {owner ? shortAddr(owner, 4) : "no wallet"}
       </span>
       <span
-        className={`eyebrow px-1.5 py-0.5 rounded border ${
-          mode === "mainnet" ? "border-neg/40 text-neg" : "border-magenta/30 text-magenta"
-        }`}
+        className={`eyebrow px-1.5 py-0.5 rounded border ${tier.cls}`}
         title={networkName(chain, mode)}
       >
-        {mode === "mainnet" ? "read-only" : "live"}
+        {tier.label}
       </span>
     </div>
   );

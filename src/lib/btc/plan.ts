@@ -98,6 +98,7 @@ export async function assembleBtcPlan(params: {
   intentSummary: string;
   senderPublicKey?: string | null;
   policyOverride?: PolicyOverride;
+  allowMainnetSign?: boolean;
 }): Promise<Plan> {
   const { mode, fromAddress, toAddress, amountSat, feeRateSatVb, intentSummary } =
     params;
@@ -139,14 +140,18 @@ export async function assembleBtcPlan(params: {
     params.policyOverride?.maxNotionalUsd ?? 5000,
     params.policyOverride?.largeValueUsd ?? 250
   );
-  const signable = guardrail.pass && modeAllowsSigning(mode);
+  const signable = guardrail.pass && modeAllowsSigning(mode, params.allowMainnetSign);
 
   const warnings: string[] = [...guardrail.warnings];
   warnings.push(
     "Bitcoin has no on-chain simulation: this preview is derived from the PSBT (inputs/outputs/fee), not a live execution."
   );
-  if (!modeAllowsSigning(mode)) {
-    warnings.push("Bitcoin mainnet is read-only in this demo — signing is disabled.");
+  if (mode === "mainnet") {
+    warnings.push(
+      params.allowMainnetSign
+        ? "⚠ Mainnet signing is ON — confirming will broadcast a real Bitcoin transaction and move real funds."
+        : "Bitcoin mainnet is read-only — signing is disabled. Turn on mainnet signing in guardrail settings to enable it."
+    );
   }
 
   return {

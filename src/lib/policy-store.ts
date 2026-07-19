@@ -55,3 +55,29 @@ export function resetPolicy() {
   window.localStorage.removeItem(KEY);
   window.dispatchEvent(new Event(POLICY_EVENT));
 }
+
+/**
+ * Mainnet signing switch. OFF by default: mainnet is read-only (real reads,
+ * plans and sims, but no broadcast) until the user explicitly turns this on,
+ * accepting that confirmed plans will then move real funds.
+ */
+const SIGN_KEY = "wc-mainnet-signing-v1";
+
+export function getMainnetSigning(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SIGN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setMainnetSigning(on: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SIGN_KEY, on ? "1" : "0");
+    window.dispatchEvent(new Event(POLICY_EVENT));
+  } catch {
+    /* ignore */
+  }
+}

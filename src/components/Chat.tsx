@@ -12,7 +12,7 @@ import { CHAINS } from "@/lib/chains";
 import type { Conversation } from "@/lib/chat-store";
 import type { ChatContext } from "./useConversations";
 import { entriesForChain, ADDRESS_BOOK_EVENT } from "@/lib/address-book";
-import { getPolicyOverride, POLICY_EVENT } from "@/lib/policy-store";
+import { getPolicyOverride, getMainnetSigning, POLICY_EVENT } from "@/lib/policy-store";
 
 const SUGGESTIONS: Record<Chain, string[]> = {
   solana: [
@@ -81,6 +81,7 @@ export function Chat({
             address: e.address,
           })),
           policyOverride: getPolicyOverride(),
+          allowMainnetSign: getMainnetSigning(),
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

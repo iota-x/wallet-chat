@@ -61,19 +61,21 @@ function buildToolsForChain(
   mode: Mode,
   owner: string,
   ownerPublicKey: string | null | undefined,
-  policyOverride: PolicyOverride
+  policyOverride: PolicyOverride,
+  allowMainnetSign: boolean
 ) {
   if (chain === "ethereum") {
-    return createEvmTools({ mode, owner: owner as Address, policyOverride });
+    return createEvmTools({ mode, owner: owner as Address, policyOverride, allowMainnetSign });
   }
   if (chain === "bitcoin") {
-    return createBtcTools({ mode, owner, publicKey: ownerPublicKey, policyOverride });
+    return createBtcTools({ mode, owner, publicKey: ownerPublicKey, policyOverride, allowMainnetSign });
   }
   return createTools({
     connection: getConnection(mode),
     mode,
     owner: new PublicKey(owner),
     policyOverride,
+    allowMainnetSign,
   });
 }
 
@@ -97,6 +99,7 @@ export async function POST(req: Request) {
     ownerPublicKey?: string;
     addressBook?: { label: string; address: string }[];
     policyOverride?: PolicyOverride;
+    allowMainnetSign?: boolean;
   };
   try {
     body = await req.json();
@@ -135,7 +138,14 @@ export async function POST(req: Request) {
     );
   }
 
-  const tools = buildToolsForChain(chain, mode, owner, body.ownerPublicKey, policyOverride);
+  const tools = buildToolsForChain(
+    chain,
+    mode,
+    owner,
+    body.ownerPublicKey,
+    policyOverride,
+    body.allowMainnetSign === true
+  );
   const modelMessages = await convertToModelMessages(messages);
   const { model } = resolveModel();
 

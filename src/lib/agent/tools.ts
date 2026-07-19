@@ -29,6 +29,7 @@ export interface ToolContext {
   mode: Mode;
   owner: PublicKey;
   policyOverride?: PolicyOverride;
+  allowMainnetSign?: boolean;
 }
 
 /** Resolve a requested amount to base units against the live balance. */
@@ -167,6 +168,7 @@ export function createTools(ctx: ToolContext) {
           route: null,
           quote: null,
           policyOverride: ctx.policyOverride,
+          allowMainnetSign: ctx.allowMainnetSign,
         });
         return plan;
       },
@@ -240,6 +242,7 @@ export function createTools(ctx: ToolContext) {
           route,
           quote: { fetchedAt, ttlMs: 20_000 },
           policyOverride: ctx.policyOverride,
+          allowMainnetSign: ctx.allowMainnetSign,
         });
         return plan;
       },

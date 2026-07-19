@@ -5,6 +5,8 @@ import {
   getPolicySettings,
   setPolicySettings,
   resetPolicy,
+  getMainnetSigning,
+  setMainnetSigning,
   POLICY_DEFAULTS,
   type PolicySettings,
 } from "@/lib/policy-store";
@@ -71,6 +73,7 @@ const FIELDS: Field[] = [
 
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [settings, setSettings] = useState<PolicySettings>(() => getPolicySettings());
+  const [signing, setSigning] = useState<boolean>(() => getMainnetSigning());
 
   function update(key: keyof PolicySettings, shown: number, f: Field) {
     const next = { ...settings, [key]: f.fromShown(shown) };
@@ -87,7 +90,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-ink/25" onClick={onClose} />
       <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl border border-line bg-paper2 shadow-2xl animate-fade-up">
         <div className="flex items-center justify-between px-4 py-3 border-b border-line/70">
           <div>
@@ -114,6 +117,49 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="overflow-y-auto p-4 space-y-5">
+          {/* The one switch that turns a simulation into a real transaction. */}
+          <div
+            className={`rounded-xl border px-3 py-3 ${
+              signing ? "border-neg/50 bg-neg/[0.06]" : "border-line/70 bg-haze/40"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[13px] text-ink font-medium">
+                  Enable mainnet signing
+                </div>
+                <p className="text-[11px] text-ink3 mt-0.5">
+                  Off: mainnet is read-only (plan + simulate only). On: confirmed
+                  plans broadcast <span className="text-neg">real transactions</span>.
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={signing}
+                onClick={() => {
+                  const v = !signing;
+                  setSigning(v);
+                  setMainnetSigning(v);
+                }}
+                className={`shrink-0 relative h-6 w-11 rounded-full transition-colors ${
+                  signing ? "bg-neg" : "bg-line"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper transition-transform ${
+                    signing ? "translate-x-[22px]" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+            {signing && (
+              <p className="text-[11px] text-neg mt-2 leading-relaxed">
+                ⚠ You are signing with real funds on mainnet. The guardrails below
+                and the pre-submit re-simulation are the only safety net.
+              </p>
+            )}
+          </div>
+
           {FIELDS.map((f) => {
             const shown = f.toShown(settings[f.key]);
             return (

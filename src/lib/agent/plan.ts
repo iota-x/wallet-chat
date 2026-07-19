@@ -57,6 +57,7 @@ export interface AssembleParams {
   route: SwapRoute | null;
   quote: Freshness | null;
   policyOverride?: PolicyOverride;
+  allowMainnetSign?: boolean;
 }
 
 export async function assemblePlan(params: AssembleParams): Promise<Plan> {
@@ -107,13 +108,15 @@ export async function assemblePlan(params: AssembleParams): Promise<Plan> {
   });
 
   // 6) The single derivation of signability.
-  const signable =
-    simulation.success && guardrail.pass && modeAllowsSigning(mode);
+  const canSign = modeAllowsSigning(mode, params.allowMainnetSign);
+  const signable = simulation.success && guardrail.pass && canSign;
 
   const warnings: string[] = [...guardrail.warnings];
-  if (!modeAllowsSigning(mode)) {
+  if (mode === "mainnet") {
     warnings.push(
-      "Mainnet is read-only in this demo: the plan, simulation and diff are real, but signing is disabled."
+      params.allowMainnetSign
+        ? "⚠ Mainnet signing is ON — confirming will broadcast a real transaction and move real funds."
+        : "Mainnet is read-only: the plan, simulation and diff are real, but signing is disabled. Turn on mainnet signing in guardrail settings to enable it."
     );
   }
   if (!simulation.success) {
@@ -153,7 +156,8 @@ export async function assemblePlan(params: AssembleParams): Promise<Plan> {
  */
 export async function resimulatePlan(
   connection: Connection,
-  plan: Plan
+  plan: Plan,
+  allowMainnetSign = false
 ): Promise<Plan> {
   if (plan.chain !== "solana" || !plan.transactionBase64) {
     throw new Error("resimulatePlan only handles Solana plans.");
@@ -177,5 +181,6 @@ export async function resimulatePlan(
     watchedAssets,
     route: plan.route,
     quote: plan.quote,
+    allowMainnetSign,
   });
 }

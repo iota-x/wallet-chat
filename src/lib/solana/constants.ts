@@ -107,9 +107,11 @@ export function rpcEndpoint(mode: Mode): string {
   return process.env.NEXT_PUBLIC_DEVNET_RPC || "https://api.devnet.solana.com";
 }
 
-/** Whether real signing/submission is permitted in this mode. Mainnet is
- * read-only in this showcase: reads, plans, sims, and the real diff — but the
- * client refuses to submit. This is a hard invariant, not a UI preference. */
-export function modeAllowsSigning(mode: Mode): boolean {
-  return mode === "devnet";
+/** Whether real signing/submission is permitted. The executable test tier
+ * (devnet/Sepolia/testnet) always allows it. Mainnet is read-only by default —
+ * reads, plans, sims and the real diff, but no broadcast — unless the user has
+ * explicitly opted into mainnet signing (`allowMainnet`), accepting real-fund
+ * risk. The value is threaded from the request, never trusted from the model. */
+export function modeAllowsSigning(mode: Mode, allowMainnet = false): boolean {
+  return mode === "devnet" || (mode === "mainnet" && allowMainnet);
 }

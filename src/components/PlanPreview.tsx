@@ -10,6 +10,7 @@ import { useWalletChat } from "./WalletProviders";
 import { sendEvmTx, getEthereum } from "@/lib/wallet/evm";
 import { signAndPushPsbt, getUnisat } from "@/lib/wallet/btc";
 import { recordTransaction } from "@/lib/tx-store";
+import { getMainnetSigning } from "@/lib/policy-store";
 
 /**
  * THE signature element — the verification slip. A printed instrument readout
@@ -75,7 +76,7 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
       const res = await fetch("/api/resim", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(plan),
+        body: JSON.stringify({ plan, allowMainnetSign: getMainnetSigning() }),
       });
       const data = (await res.json()) as { plan?: Plan; error?: string };
       if (!res.ok || !data.plan) {
@@ -498,11 +499,11 @@ function disabledReason(
   typedOk: boolean,
   needsTyped: string | null
 ): string | null {
-  if (plan.mode === "mainnet")
-    return "mainnet is read-only here — the slip and diff are real, signing is off";
   if (!plan.simulation.success && plan.chain !== "bitcoin")
     return "simulation failed, so this cannot be signed";
   if (!plan.guardrail.pass) return "a guardrail is blocking this plan";
+  if (plan.mode === "mainnet")
+    return "mainnet signing is off — enable it in guardrail settings to sign real transactions";
   if (!walletReady) return "connect the matching wallet to sign";
   if (needsTyped && !typedOk) return "type the confirmation phrase to arm";
   return null;

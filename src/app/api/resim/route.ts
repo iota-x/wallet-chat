@@ -15,19 +15,23 @@ export const maxDuration = 30;
  * current UTXO set (which catches spent inputs / balance changes).
  */
 export async function POST(req: Request) {
-  let plan: Plan;
+  let body: { plan?: Plan; allowMainnetSign?: boolean } | Plan;
   try {
-    plan = (await req.json()) as Plan;
+    body = await req.json();
   } catch {
     return new Response("Bad request", { status: 400 });
   }
+  // Back-compat: body may be a bare Plan or { plan, allowMainnetSign }.
+  const plan = ("plan" in body && body.plan ? body.plan : body) as Plan;
+  const allowMainnetSign =
+    "allowMainnetSign" in body ? body.allowMainnetSign === true : false;
   if (!plan?.owner || !plan?.chain) {
     return Response.json({ error: "Malformed plan." }, { status: 400 });
   }
 
   try {
     if (plan.chain === "ethereum") {
-      return Response.json({ plan: await resimulateEvmPlan(plan) });
+      return Response.json({ plan: await resimulateEvmPlan(plan, allowMainnetSign) });
     }
     if (plan.chain === "bitcoin") {
       if (!plan.btc) throw new Error("Missing BTC payload.");
@@ -40,12 +44,13 @@ export async function POST(req: Request) {
         amountSat: recipient.valueSat,
         feeRateSatVb: plan.btc.feeRateSatVb,
         senderPublicKey: plan.btc.senderPublicKey,
+        allowMainnetSign,
         intentSummary: plan.intentSummary,
       });
       return Response.json({ plan: fresh });
     }
     const connection = getConnection(plan.mode);
-    return Response.json({ plan: await resimulatePlan(connection, plan) });
+    return Response.json({ plan: await resimulatePlan(connection, plan, allowMainnetSign) });
   } catch (e) {
     return Response.json(
       { error: `Re-simulation failed: ${(e as Error).message}` },

@@ -12,6 +12,7 @@ export interface BtcToolContext {
   /** Sender public key (hex) — needed to build Taproot PSBTs. */
   publicKey?: string | null;
   policyOverride?: PolicyOverride;
+  allowMainnetSign?: boolean;
 }
 
 const SATS = 100_000_000;
@@ -68,6 +69,7 @@ export function createBtcTools(ctx: BtcToolContext) {
             amountSat,
             feeRateSatVb: feeRate,
             senderPublicKey: publicKey,
+            allowMainnetSign: ctx.allowMainnetSign,
             policyOverride: ctx.policyOverride,
             intentSummary: `Send ${input.amount} BTC to ${input.destination.slice(0, 6)}…${input.destination.slice(-4)}`,
           });

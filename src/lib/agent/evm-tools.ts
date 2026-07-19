@@ -20,6 +20,7 @@ export interface EvmToolContext {
   mode: Mode;
   owner: Address;
   policyOverride?: PolicyOverride;
+  allowMainnetSign?: boolean;
 }
 
 async function evmBalanceOf(
@@ -110,6 +111,7 @@ export function createEvmTools(ctx: EvmToolContext) {
           route: null,
           quote: null,
           policyOverride: ctx.policyOverride,
+          allowMainnetSign: ctx.allowMainnetSign,
         });
       },
     }),
@@ -161,6 +163,7 @@ export function createEvmTools(ctx: EvmToolContext) {
             route: built.route,
             quote: { fetchedAt: built.fetchedAt, ttlMs: 20_000 },
             policyOverride: ctx.policyOverride,
+          allowMainnetSign: ctx.allowMainnetSign,
           });
         } catch (e) {
           return { error: `Swap build failed: ${(e as Error).message}` };
