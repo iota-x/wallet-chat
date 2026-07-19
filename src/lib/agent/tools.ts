@@ -167,6 +167,7 @@ export function createTools(ctx: ToolContext) {
           watchedAssets: built.watchedAssets,
           route: null,
           quote: null,
+          recipient: input.destination,
           policyOverride: ctx.policyOverride,
           allowMainnetSign: ctx.allowMainnetSign,
         });

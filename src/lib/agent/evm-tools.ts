@@ -110,6 +110,7 @@ export function createEvmTools(ctx: EvmToolContext) {
           targets: built.targets,
           route: null,
           quote: null,
+          recipient: getAddress(input.destination),
           policyOverride: ctx.policyOverride,
           allowMainnetSign: ctx.allowMainnetSign,
         });

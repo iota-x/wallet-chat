@@ -16,6 +16,7 @@ import {
 } from "@/lib/guardrails/policy";
 import { decodeEvmDiff, type EvmWatchedToken } from "./simulate";
 import { getEvmUsdPrices } from "./pricing";
+import { decodeApproval } from "./approvals";
 import { EVM_TOKENS, NATIVE_ETH, isNativeEth } from "./constants";
 
 /**
@@ -72,6 +73,8 @@ export interface AssembleEvmParams {
   targets: string[];
   route: SwapRoute | null;
   quote: Freshness | null;
+  /** External transfer destination, for recipient screening. Null for swaps. */
+  recipient?: string | null;
   policyOverride?: PolicyOverride;
   allowMainnetSign?: boolean;
 }
@@ -86,6 +89,7 @@ export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> 
     watched
   );
   const diff = await priceEvmDiff(rawDiff, mode);
+  const approval = decodeApproval(tx.data);
 
   const policyDiff: PolicyDiffEntry[] = diff.map((d) => ({
     symbol: d.symbol,
@@ -101,6 +105,7 @@ export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> 
     programIds: targets,
     diff: policyDiff,
     swap: route ? { slippageBps: route.slippageBps, priceImpactPct: route.priceImpactPct } : null,
+    approval,
     quote: params.quote,
     now: Date.now(),
     config: {
@@ -134,6 +139,8 @@ export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> 
     kind,
     intentSummary,
     owner,
+    recipient: params.recipient ?? null,
+    approval,
     transactionBase64: null,
     evmTx: tx,
     btc: null,
@@ -181,6 +188,7 @@ export async function resimulateEvmPlan(
     targets: plan.route ? [plan.evmTx.to.toLowerCase()] : targets,
     route: plan.route,
     quote: plan.quote,
+    recipient: plan.recipient ?? null,
     allowMainnetSign,
   });
 }

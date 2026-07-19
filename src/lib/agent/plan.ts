@@ -56,6 +56,8 @@ export interface AssembleParams {
   watchedAssets: WatchedAsset[];
   route: SwapRoute | null;
   quote: Freshness | null;
+  /** External transfer destination, for recipient screening. Null for swaps. */
+  recipient?: string | null;
   policyOverride?: PolicyOverride;
   allowMainnetSign?: boolean;
 }
@@ -133,6 +135,8 @@ export async function assemblePlan(params: AssembleParams): Promise<Plan> {
     kind,
     intentSummary,
     owner: owner.toBase58(),
+    recipient: params.recipient ?? null,
+    approval: null,
     transactionBase64: Buffer.from(tx.serialize()).toString("base64"),
     evmTx: null,
     btc: null,
@@ -181,6 +185,7 @@ export async function resimulatePlan(
     watchedAssets,
     route: plan.route,
     quote: plan.quote,
+    recipient: plan.recipient ?? null,
     allowMainnetSign,
   });
 }

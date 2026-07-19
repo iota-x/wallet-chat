@@ -12,6 +12,8 @@ export interface PolicySettings {
   maxSlippageBps: number;
   largeValueUsd: number;
   quoteMaxAgeMs: number;
+  /** Rolling 24h outflow ceiling (client-side velocity limit). */
+  dailyCapUsd: number;
 }
 
 export const POLICY_DEFAULTS: PolicySettings = {
@@ -19,6 +21,7 @@ export const POLICY_DEFAULTS: PolicySettings = {
   maxSlippageBps: 100,
   largeValueUsd: 250,
   quoteMaxAgeMs: 30_000,
+  dailyCapUsd: 10_000,
 };
 
 const KEY = "wc-policy-v1";

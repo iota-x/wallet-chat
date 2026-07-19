@@ -18,6 +18,10 @@ export interface TxRecord {
   summary: string;
   /** e.g. "−250 USDC · +1.68 JitoSOL" */
   delta: string;
+  /** Net USD outflow of this tx (for the rolling velocity limit). */
+  outflowUsd?: number;
+  /** External destination, if any — seeds recipient screening from history. */
+  recipient?: string | null;
   ts: number;
   status: TxStatus;
 }

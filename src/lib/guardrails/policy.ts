@@ -34,6 +34,7 @@
  */
 
 import type {
+  ApprovalInfo,
   GuardrailCheck,
   GuardrailReport,
   Mode,
@@ -138,6 +139,8 @@ export interface PolicyInput {
   diff: PolicyDiffEntry[];
   /** Present for swaps only. */
   swap: { slippageBps: number; priceImpactPct: number } | null;
+  /** A token approval decoded from the calldata, if the tx grants one. */
+  approval?: ApprovalInfo | null;
   /** Present when a time-sensitive quote backs the plan. */
   quote: { fetchedAt: number; ttlMs: number } | null;
   /** Injected clock for deterministic tests. */
@@ -225,6 +228,32 @@ export function evaluateGuardrails(input: PolicyInput): GuardrailReport {
             cfg.nativeDecimals
           )} ${cfg.nativeSymbol}).`,
   });
+
+  // 3b) approval-safety — a diff sees no balance change for an approval, so we
+  // gate the SPENDER (not just the token contract) and flag unlimited grants.
+  if (input.approval && input.approval.approved !== false) {
+    const { spender, unlimited, amount, kind } = input.approval;
+    const spenderAllowed = allowed.has(spender.toLowerCase());
+    if (!spenderAllowed) {
+      checks.push({
+        id: "approval-safety",
+        label: "Approval spender allowlisted",
+        severity: "block",
+        passed: false,
+        detail: `Blocked: this ${kind} grants spend authority to non-allowlisted spender ${spender}. Approvals move no balance, so simulation cannot catch this.`,
+      });
+    } else {
+      checks.push({
+        id: "approval-safety",
+        label: "Approval spender allowlisted",
+        severity: unlimited ? "warn" : "block",
+        passed: !unlimited,
+        detail: unlimited
+          ? `Warning: unlimited approval to ${spender}. Prefer an exact-amount approval so a later exploit can't drain more than this trade needs.`
+          : `Approval to allowlisted ${spender}${amount ? ` for ${amount} base units` : ""}.`,
+      });
+    }
+  }
 
   // 4) slippage ceiling (swaps only).
   if (input.swap) {

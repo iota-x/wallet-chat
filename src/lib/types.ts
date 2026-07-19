@@ -92,6 +92,28 @@ export interface Freshness {
   ttlMs: number;
 }
 
+/**
+ * A token-approval decoded from EVM calldata. Approvals move no balance, so a
+ * pure balance-diff simulation sees NOTHING for them — this is the classic
+ * drain blind-spot. We decode the calldata directly so the guardrail can gate
+ * the spender and flag unlimited allowances even though the diff is zero.
+ */
+export interface ApprovalInfo {
+  kind:
+    | "erc20-approve"
+    | "erc20-increaseAllowance"
+    | "setApprovalForAll"
+    | "permit";
+  /** The address being granted spend authority (lowercased). */
+  spender: string;
+  /** ERC-20 allowance in base units (decimal string), or null for NFT/boolean grants. */
+  amount: string | null;
+  /** True if the allowance is effectively unlimited (top-bit / uint256 max region). */
+  unlimited: boolean;
+  /** setApprovalForAll boolean, when applicable. false = a revoke. */
+  approved?: boolean;
+}
+
 export type GuardrailSeverity = "block" | "warn";
 
 export interface GuardrailCheck {
@@ -169,6 +191,11 @@ export interface Plan {
   intentSummary: string;
   /** The wallet this plan is for. */
   owner: string;
+  /** The external destination of a transfer (for recipient screening). Null for
+   * swaps (funds return to the owner) and where there is no single recipient. */
+  recipient?: string | null;
+  /** A token approval decoded from the (EVM) calldata, if this tx grants one. */
+  approval?: ApprovalInfo | null;
   /** Solana: unsigned base64 VersionedTransaction. Null on non-Solana plans. */
   transactionBase64: string | null;
   /** Ethereum: unsigned tx request. Null on non-EVM plans. */

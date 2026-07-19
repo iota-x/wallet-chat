@@ -164,6 +164,8 @@ export async function assembleBtcPlan(params: {
     kind: "transfer",
     intentSummary,
     owner: fromAddress,
+    recipient: toAddress,
+    approval: null,
     transactionBase64: null,
     evmTx: null,
     btc: built.payload,

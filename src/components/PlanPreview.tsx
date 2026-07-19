@@ -1,16 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
-import type { Plan, AssetDelta, GuardrailCheck, BtcIo } from "@/lib/types";
+import type { Plan, AssetDelta, ApprovalInfo, GuardrailCheck, BtcIo } from "@/lib/types";
 import { formatSigned, formatUsd, formatUi, pct, shortAddr } from "@/lib/format";
 import { networkName } from "@/lib/chains";
 import { useWalletChat } from "./WalletProviders";
 import { sendEvmTx, getEthereum } from "@/lib/wallet/evm";
 import { signAndPushPsbt, getUnisat } from "@/lib/wallet/btc";
-import { recordTransaction } from "@/lib/tx-store";
-import { getMainnetSigning } from "@/lib/policy-store";
+import { recordTransaction, listTransactions } from "@/lib/tx-store";
+import { getMainnetSigning, getPolicySettings } from "@/lib/policy-store";
+import { listEntries } from "@/lib/address-book";
+import { screenRecipient, type KnownAddress, type RecipientVerdict } from "@/lib/security/recipient";
+import { rollingOutflowUsd, planOutflowUsd } from "@/lib/security/velocity";
 
 /**
  * THE signature element — the verification slip. A printed instrument readout
@@ -63,11 +66,40 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
         ? !!getEthereum()
         : !!getUnisat();
 
+  // Client-side pre-sign checks that live outside simulation, because they draw
+  // on client-only state: your address book + your own transaction history.
+  const security = useMemo(() => {
+    const settings = getPolicySettings();
+    const txs = listTransactions().filter((t) => t.chain === plan.chain);
+    const known: KnownAddress[] = [
+      ...listEntries()
+        .filter((e) => e.chain === plan.chain)
+        .map((e) => ({ label: e.label, address: e.address })),
+      ...txs
+        .filter((t) => !!t.recipient)
+        .map((t) => ({ label: "a past recipient", address: t.recipient as string })),
+    ];
+    const recipient: RecipientVerdict | null = plan.recipient
+      ? screenRecipient(plan.recipient, known)
+      : null;
+    const rolling = rollingOutflowUsd(txs, Date.now());
+    const thisOut = planOutflowUsd(plan.diff);
+    const projected = rolling + thisOut;
+    const cap = settings.dailyCapUsd;
+    const overCap = projected > cap;
+    return { recipient, rolling, thisOut, projected, cap, overCap };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.id, plan.recipient]);
+
+  const securityBlocked =
+    security.recipient?.level === "poisoning" || security.overCap;
+
   const canConfirm =
     plan.signable &&
     typedOk &&
     hasSigner &&
     walletMatches &&
+    !securityBlocked &&
     (state.s === "idle" || state.s === "drift" || state.s === "error");
 
   async function onConfirm() {
@@ -125,6 +157,8 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
         signature,
         owner: fresh.owner,
         summary: fresh.intentSummary,
+        recipient: fresh.recipient ?? null,
+        outflowUsd: planOutflowUsd(fresh.diff),
         // Solana is awaited to confirmation above; EVM/BTC are broadcast only.
         status: fresh.chain === "solana" ? "confirmed" : "pending",
         delta: fresh.diff
@@ -171,6 +205,18 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
 
           <Guardrails checks={plan.guardrail.checks} pass={plan.guardrail.pass} />
 
+          <SecurityNotices
+            approval={plan.approval ?? null}
+            recipient={security.recipient}
+            recipientAddr={plan.recipient ?? null}
+            velocity={{
+              rolling: security.rolling,
+              projected: security.projected,
+              cap: security.cap,
+              over: security.overCap,
+            }}
+          />
+
           {plan.warnings.length > 0 && (
             <ul className="space-y-1">
               {plan.warnings.map((w, i) => (
@@ -195,6 +241,15 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
             setTyped={setTyped}
             typedOk={typedOk}
             walletReady={hasSigner && walletMatches}
+            securityReason={
+              security.recipient?.level === "poisoning"
+                ? "blocked: destination looks like a poisoned lookalike of a known address"
+                : security.overCap
+                  ? `blocked: this would exceed your daily spend ceiling ($${Math.round(
+                      security.cap
+                    ).toLocaleString()})`
+                  : null
+            }
             onConfirm={onConfirm}
           />
         </div>
@@ -368,6 +423,104 @@ function Guardrails({ checks, pass }: { checks: GuardrailCheck[]; pass: boolean 
   );
 }
 
+/**
+ * The layers simulation can't provide: approval decoding, recipient screening,
+ * and a rolling spend ceiling. These draw on calldata + your own history, not
+ * the balance diff — so they catch what a diff-only guardrail is blind to.
+ */
+function SecurityNotices({
+  approval,
+  recipient,
+  recipientAddr,
+  velocity,
+}: {
+  approval: ApprovalInfo | null;
+  recipient: RecipientVerdict | null;
+  recipientAddr: string | null;
+  velocity: { rolling: number; projected: number; cap: number; over: boolean };
+}) {
+  const showVelocity = velocity.over || velocity.projected - velocity.rolling > 0;
+  if (!approval && !recipient && !showVelocity) return null;
+
+  return (
+    <section className="space-y-1.5">
+      <span className="eyebrow">off-chain checks</span>
+
+      {approval && (
+        <Notice tone={approval.unlimited ? "neg" : "warn"} icon="⚠">
+          <b>Token approval.</b> This grants{" "}
+          {approval.unlimited ? "an UNLIMITED allowance" : "a bounded allowance"} to{" "}
+          <span className="num">{shortAddr(approval.spender, 5)}</span>. Approvals move
+          no balance, so simulation shows nothing — the spender is checked against the
+          allowlist instead.
+        </Notice>
+      )}
+
+      {recipient?.level === "poisoning" && (
+        <Notice tone="neg" icon="⛔">
+          <b>Address-poisoning suspected.</b> This destination shares the first and last
+          characters of{" "}
+          <span className="num">{shortAddr(recipient.lookalike, 5)}</span> (“{recipient.label}
+          ”) but is a <b>different address</b>. Signing is blocked — verify the full
+          address character-by-character.
+        </Notice>
+      )}
+      {recipient?.level === "new" && recipientAddr && (
+        <Notice tone="warn" icon="?">
+          <b>New destination.</b> You’ve never sent to{" "}
+          <span className="num">{shortAddr(recipientAddr, 5)}</span> before. Confirm it’s
+          right before signing.
+        </Notice>
+      )}
+      {recipient?.level === "known" && (
+        <Notice tone="pos" icon="✓">
+          Recipient matches <b>“{recipient.label}”</b> from your address book / history.
+        </Notice>
+      )}
+
+      {showVelocity && (
+        <Notice tone={velocity.over ? "neg" : "muted"} icon={velocity.over ? "⛔" : "≈"}>
+          <b>Daily velocity.</b> 24h outflow {formatUsd(velocity.rolling)} →{" "}
+          <span className={velocity.over ? "text-neg" : "text-ink"}>
+            {formatUsd(velocity.projected)}
+          </span>{" "}
+          of your {formatUsd(velocity.cap)} ceiling.
+          {velocity.over && " Signing is blocked until the window clears or you raise the cap."}
+        </Notice>
+      )}
+    </section>
+  );
+}
+
+function Notice({
+  tone,
+  icon,
+  children,
+}: {
+  tone: "neg" | "warn" | "pos" | "muted";
+  icon: string;
+  children: React.ReactNode;
+}) {
+  const cls =
+    tone === "neg"
+      ? "border-neg/35 bg-neg/[0.06] text-ink2"
+      : tone === "warn"
+        ? "border-warn/35 bg-warn/[0.06] text-ink2"
+        : tone === "pos"
+          ? "border-pos/30 bg-pos/[0.05] text-ink2"
+          : "border-line bg-paper2/40 text-ink2";
+  const iconCls =
+    tone === "neg" ? "text-neg" : tone === "warn" ? "text-warn" : tone === "pos" ? "text-pos" : "text-ink3";
+  return (
+    <div className={`rounded-lg border px-3 py-2 flex gap-2 ${cls}`}>
+      <span className={`font-mono text-[11px] mt-0.5 shrink-0 ${iconCls}`} aria-hidden>
+        {icon}
+      </span>
+      <p className="text-[11px] leading-relaxed">{children}</p>
+    </div>
+  );
+}
+
 function CheckIcon({ passed, severity }: { passed: boolean; severity: "block" | "warn" }) {
   if (passed) return <span className="text-pos font-mono text-[11px] mt-0.5" aria-label="pass">✓</span>;
   if (severity === "warn")
@@ -406,6 +559,7 @@ function ConfirmZone({
   setTyped,
   typedOk,
   walletReady,
+  securityReason,
   onConfirm,
 }: {
   plan: Plan;
@@ -416,6 +570,7 @@ function ConfirmZone({
   setTyped: (v: string) => void;
   typedOk: boolean;
   walletReady: boolean;
+  securityReason: string | null;
   onConfirm: () => void;
 }) {
   if (state.s === "confirmed") {
@@ -437,7 +592,9 @@ function ConfirmZone({
     );
   }
 
-  const reason = disabledReason(plan, walletReady, typedOk, needsTyped);
+  const reason =
+    securityReason ?? disabledReason(plan, walletReady, typedOk, needsTyped);
+  const armed = plan.signable && !securityReason;
   const busy =
     state.s === "resimulating" || state.s === "signing" || state.s === "sending";
 
@@ -468,12 +625,12 @@ function ConfirmZone({
             : "bg-haze text-ink3 border border-line cursor-not-allowed"
         }`}
       >
-        {busy ? busyLabel(state) : plan.signable ? "▲ arm & sign" : "⦸ signing locked"}
+        {busy ? busyLabel(state) : armed ? "▲ arm & sign" : "⦸ signing locked"}
       </button>
 
       {state.s === "drift" && <p className="text-[11px] text-warn font-mono">{state.message}</p>}
       {state.s === "error" && <p className="text-[11px] text-neg break-words font-mono">{state.message}</p>}
-      {!plan.signable && reason && (
+      {!armed && reason && (
         <p className="eyebrow text-center normal-case tracking-normal">{reason}</p>
       )}
     </div>

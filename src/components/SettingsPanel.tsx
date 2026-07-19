@@ -37,6 +37,17 @@ const FIELDS: Field[] = [
     unit: "$",
   },
   {
+    key: "dailyCapUsd",
+    label: "Daily spend ceiling",
+    hint: "Rolling 24h outflow limit across all your transactions.",
+    min: 100,
+    max: 200000,
+    step: 100,
+    toShown: (v) => v,
+    fromShown: (v) => v,
+    unit: "$",
+  },
+  {
     key: "maxSlippageBps",
     label: "Slippage ceiling",
     hint: "Max tolerated slippage on a swap.",
@@ -141,13 +152,13 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                   setSigning(v);
                   setMainnetSigning(v);
                 }}
-                className={`shrink-0 relative h-6 w-11 rounded-full transition-colors ${
+                className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   signing ? "bg-neg" : "bg-line"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-paper transition-transform ${
-                    signing ? "translate-x-[22px]" : "translate-x-0.5"
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                    signing ? "translate-x-[22px]" : "translate-x-[2px]"
                   }`}
                 />
               </button>
