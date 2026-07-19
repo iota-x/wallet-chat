@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { GlassHero } from "./GlassHero";
+import { InteractiveGlass } from "./InteractiveGlass";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
@@ -80,9 +80,9 @@ function Hero() {
           </div>
         </div>
 
-        {/* Right — the glass artifact, annotated */}
+        {/* Right — the glass artifact (tilts to your pointer), annotated */}
         <div className="relative">
-          <GlassHero />
+          <InteractiveGlass />
           <AnnotationLayer />
         </div>
       </div>
