@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { InteractiveGlass } from "./InteractiveGlass";
+import { GlassArtifact } from "./GlassArtifact";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
@@ -47,29 +48,49 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="mx-auto max-w-6xl px-5 sm:px-8 pt-8 sm:pt-14 pb-20">
-      <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 items-center">
-        {/* Left — the thesis, revealed as a staggered load sequence */}
-        <div className="relative z-10">
+    <section className="grain relative isolate overflow-hidden min-h-[92vh] flex items-center">
+      <Atmosphere />
+
+      {/* Artwork — desktop: scaled up and bleeding off the right edge. */}
+      <div
+        aria-hidden
+        className="hidden lg:block pointer-events-none absolute top-[47%] right-[-4vw] -translate-y-1/2 w-[52vw] max-w-[800px] animate-rise-in"
+        style={{ animationDelay: "0.2s" }}
+      >
+        <ReflectedLight />
+        <InteractiveGlass />
+        <AnnotationLayer />
+      </div>
+
+      <div className="relative z-10 w-full mx-auto max-w-6xl px-5 sm:px-8 py-16 sm:py-24">
+        {/* Mobile artwork — a smaller centred piece above the copy. */}
+        <div className="lg:hidden mx-auto max-w-[260px] mb-2 animate-glass-float">
+          <GlassArtifact />
+        </div>
+
+        <div className="max-w-xl">
           <div className="eyebrow animate-rise-in" style={{ animationDelay: "0.05s" }}>
             agentic wallet · transaction verifier
           </div>
-          <h1 className="mt-5 font-sans font-black tracking-tight2 leading-[0.95] text-ink text-[clamp(2.7rem,8vw,5.3rem)]">
+          <h1 className="mt-7 font-sans font-black tracking-tight2 leading-[0.95] text-ink text-[clamp(2.7rem,7.4vw,5rem)]">
             <span className="block animate-rise-in" style={{ animationDelay: "0.14s" }}>
               Every
             </span>
-            <span className="block animate-rise-in" style={{ animationDelay: "0.22s" }}>
+            <span className="block animate-rise-in" style={{ animationDelay: "0.2s" }}>
               transaction,
             </span>
+            <span className="block animate-rise-in" style={{ animationDelay: "0.26s" }}>
+              made
+            </span>
             <span
-              className="block glass-text animate-rise-in"
-              style={{ animationDelay: "0.3s" }}
+              className="block w-fit glass-text animate-rise-in"
+              style={{ animationDelay: "0.32s" }}
             >
-              made&nbsp;transparent.
+              transparent.
             </span>
           </h1>
           <p
-            className="mt-6 max-w-md text-[15px] leading-relaxed text-ink2 animate-rise-in"
+            className="mt-8 max-w-md text-[15px] leading-relaxed text-ink2 animate-rise-in"
             style={{ animationDelay: "0.44s" }}
           >
             State an intent in plain English. WalletChat plans it, simulates it
@@ -77,36 +98,111 @@ function Hero() {
             signs until the guardrails pass and you arm it.
           </p>
           <div
-            className="mt-8 flex flex-wrap items-center gap-3 animate-rise-in"
+            className="mt-11 flex flex-wrap items-center gap-4 animate-rise-in"
             style={{ animationDelay: "0.56s" }}
           >
             <Link
               href="/app"
-              className="font-mono text-[13px] rounded-full bg-magenta text-paper px-6 py-3 hover:bg-ink transition-colors"
+              className="font-mono text-[13px] rounded-full bg-magenta text-paper px-6 py-3 shadow-[0_14px_46px_-12px_rgba(213,30,166,0.6)] hover:-translate-y-0.5 hover:shadow-[0_18px_52px_-12px_rgba(213,30,166,0.72)] transition-all duration-200"
             >
               launch app →
             </Link>
             <a
               href="#how"
-              className="font-mono text-[13px] rounded-full border border-line px-6 py-3 text-ink2 hover:border-ink transition-colors"
+              className="font-mono text-[13px] rounded-full border border-line px-6 py-3 text-ink2 hover:border-ink hover:text-ink transition-colors"
             >
               how it works
             </a>
           </div>
-        </div>
-
-        {/* Right — the glass artifact (breathes, leans to your pointer), annotated */}
-        <div className="relative animate-rise-in" style={{ animationDelay: "0.2s" }}>
-          <InteractiveGlass />
-          <AnnotationLayer />
         </div>
       </div>
     </section>
   );
 }
 
-/** The signature transfer from the reference: magenta-tagged crops with a thin
- * connector line pointing into the glass, labelling what the verifier inspects. */
+/** Layered atmosphere behind the artwork: soft lavender bloom, warm accent,
+ * near-invisible particles, and a gentle vignette — depth without clutter. */
+function Atmosphere() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div
+        className="absolute right-[-8%] top-[4%] h-[78vh] w-[78vh] rounded-full blur-[130px] animate-bloom-pulse"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(180,164,228,0.42) 0%, rgba(142,151,232,0.18) 45%, transparent 70%)",
+        }}
+      />
+      <div
+        className="absolute right-[8%] top-[36%] h-[44vh] w-[44vh] rounded-full blur-[120px] opacity-80 animate-bloom-pulse"
+        style={{
+          animationDelay: "2.4s",
+          background: "radial-gradient(circle, rgba(230,161,92,0.26) 0%, transparent 66%)",
+        }}
+      />
+      <div
+        className="absolute right-[26%] bottom-[2%] h-[40vh] w-[40vh] rounded-full blur-[130px] opacity-60"
+        style={{
+          background: "radial-gradient(circle, rgba(142,151,232,0.28) 0%, transparent 70%)",
+        }}
+      />
+      <Particles />
+      <div className="absolute inset-0 vignette" />
+    </div>
+  );
+}
+
+/** A soft reflected pool of light beneath the crystal, grounding it. */
+function ReflectedLight() {
+  return (
+    <div
+      className="absolute left-1/2 bottom-[8%] -translate-x-1/2 h-[15%] w-[62%] rounded-[50%] blur-2xl opacity-70 animate-bloom-pulse"
+      style={{
+        background: "radial-gradient(ellipse, rgba(180,164,228,0.5) 0%, transparent 70%)",
+      }}
+    />
+  );
+}
+
+const PARTICLES = [
+  { l: "58%", t: "22%", s: 2.5, d: 20, delay: 0 },
+  { l: "66%", t: "48%", s: 1.6, d: 26, delay: 3 },
+  { l: "74%", t: "30%", s: 2, d: 23, delay: 6 },
+  { l: "82%", t: "58%", s: 1.4, d: 30, delay: 1.5 },
+  { l: "70%", t: "68%", s: 2.2, d: 24, delay: 8 },
+  { l: "88%", t: "38%", s: 1.6, d: 28, delay: 4 },
+  { l: "62%", t: "40%", s: 1.4, d: 32, delay: 11 },
+  { l: "78%", t: "16%", s: 2, d: 21, delay: 5 },
+  { l: "84%", t: "72%", s: 1.5, d: 27, delay: 2 },
+  { l: "54%", t: "62%", s: 1.8, d: 29, delay: 9 },
+  { l: "90%", t: "54%", s: 1.4, d: 25, delay: 7 },
+  { l: "68%", t: "82%", s: 2, d: 22, delay: 13 },
+];
+
+function Particles() {
+  return (
+    <>
+      {PARTICLES.map((p, i) => (
+        <span
+          key={i}
+          className="absolute rounded-full bg-lilac animate-particle-rise"
+          style={{
+            left: p.l,
+            top: p.t,
+            width: p.s,
+            height: p.s,
+            opacity: 0.35,
+            filter: "blur(0.5px)",
+            animationDuration: `${p.d}s`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+/** Magenta-tagged crops with a thin connector line pointing into the glass —
+ * the verifier's annotations. They drift gently, each on its own timing. */
 function AnnotationLayer() {
   return (
     <>
@@ -117,21 +213,21 @@ function AnnotationLayer() {
         aria-hidden
       >
         <line
-          x1="70" y1="70" x2="205" y2="180"
-          stroke="#D51EA6" strokeWidth="1" strokeDasharray="220"
+          x1="86" y1="92" x2="206" y2="190"
+          stroke="#D51EA6" strokeWidth="1" strokeDasharray="240"
           className="animate-draw-line"
         />
         <line
-          x1="330" y1="322" x2="215" y2="215"
-          stroke="#D51EA6" strokeWidth="1" strokeDasharray="220"
+          x1="104" y1="286" x2="200" y2="212"
+          stroke="#D51EA6" strokeWidth="1" strokeDasharray="240"
           className="animate-draw-line"
         />
       </svg>
 
-      <Callout className="left-[2%] top-[8%]" label="simulated">
+      <Callout className="left-[3%] top-[13%]" label="simulated" drift={6}>
         exact balance diff
       </Callout>
-      <Callout className="right-[0%] bottom-[14%]" label="guardrails" tone="pos">
+      <Callout className="left-[8%] bottom-[34%]" label="guardrails" tone="pos" drift={7.5} delay={1.2}>
         pass
       </Callout>
     </>
@@ -143,20 +239,28 @@ function Callout({
   label,
   children,
   tone = "magenta",
+  drift = 6,
+  delay = 0,
 }: {
   className?: string;
   label: string;
   children: React.ReactNode;
   tone?: "magenta" | "pos";
+  drift?: number;
+  delay?: number;
 }) {
   return (
     <div
-      className={`absolute ${className} rounded-md border bg-paper2/80 backdrop-blur px-2.5 py-1.5 shadow-sm ${
+      className={`absolute ${className} rounded-md border bg-paper2/70 backdrop-blur-md px-2.5 py-1.5 shadow-lg animate-drift-y ${
         tone === "pos" ? "border-pos/50" : "border-magenta/60"
       }`}
-      style={{ animation: "fade-up 0.5s 0.7s both" }}
+      style={{ animationDuration: `${drift}s`, animationDelay: `${delay}s` }}
     >
-      <div className={`font-mono text-[9px] uppercase tracking-label ${tone === "pos" ? "text-pos" : "text-magenta"}`}>
+      <div
+        className={`font-mono text-[9px] uppercase tracking-label ${
+          tone === "pos" ? "text-pos" : "text-magenta"
+        }`}
+      >
         {label}
       </div>
       <div className="font-mono text-[12px] text-ink mt-0.5">{children}</div>

@@ -48,18 +48,19 @@ export function InteractiveGlass() {
       eX += (tX - eX) * 0.045;
       eY += (tY - eY) * 0.045;
 
-      // ambient breathing — always present, several slow out-of-phase waves
-      const rotWobbleX = Math.sin(t * 0.45) * 2.1 + Math.sin(t * 0.19) * 1.1;
-      const rotWobbleY = Math.cos(t * 0.37) * 2.4 + Math.cos(t * 0.23) * 1.0;
-      const driftX = Math.cos(t * 0.31) * 5;
-      const driftY = Math.sin(t * 0.41) * 7;
-      const breath = 1 + Math.sin(t * 0.55) * 0.014;
+      // ambient breathing — always present, but nearly imperceptible: slow,
+      // small, out-of-phase waves plus a 100%→102%→100% ~11s scale breath.
+      const rotWobbleX = Math.sin(t * 0.24) * 0.9 + Math.sin(t * 0.13) * 0.5;
+      const rotWobbleY = Math.cos(t * 0.2) * 1.0 + Math.cos(t * 0.15) * 0.5;
+      const driftX = Math.cos(t * 0.17) * 3;
+      const driftY = Math.sin(t * 0.22) * 3.5;
+      const breath = 1 + (Math.sin(t * 0.57) * 0.5 + 0.5) * 0.02;
 
-      const rx = -eY * 7 + rotWobbleX;
-      const ry = eX * 8 + rotWobbleY;
-      const tx = eX * 7 + driftX;
-      const ty = eY * 7 + driftY;
-      const scale = breath + Math.hypot(eX, eY) * 0.012;
+      const rx = -eY * 6 + rotWobbleX;
+      const ry = eX * 7 + rotWobbleY;
+      const tx = eX * 6 + driftX;
+      const ty = eY * 6 + driftY;
+      const scale = breath + Math.hypot(eX, eY) * 0.01;
 
       const el = tiltRef.current;
       if (el) {
