@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Schibsted_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-// The human voice: a warm, legible grotesque for conversation and prose.
-const sans = Hanken_Grotesk({
+// The editorial voice: a clean grotesque that carries huge, tight display type.
+const sans = Schibsted_Grotesk({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "700", "800", "900"],
   variable: "--font-sans",
   display: "swap",
 });
 
-// The machine voice: an institutional monospace for the wordmark, every
-// numeral, and the verification slip. The ledger/instrument reports in mono.
+// The technical voice: monospace for annotations, labels, and every numeral —
+// the callout tags that inspect the glass.
 const mono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
@@ -31,7 +31,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+      <head>
+        {/* Set the theme before paint to avoid a flash. Defaults to the light
+            (inspiration) look unless the visitor previously chose dark. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{document.documentElement.dataset.theme=localStorage.getItem('wc-theme')||'light'}catch(e){}",
+          }}
+        />
+      </head>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

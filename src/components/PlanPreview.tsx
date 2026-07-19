@@ -128,7 +128,7 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
   return (
     <div className="animate-print-in w-full">
       <div className="perforation" />
-      <div className="ledger-rule rounded-b-2xl border border-hairline border-t-0 bg-slip overflow-hidden">
+      <div className="ledger-rule rounded-b-2xl border border-line border-t-0 slip-paper overflow-hidden">
         <SlipHeader plan={plan} />
         {plan.route && <RouteStrip plan={plan} />}
 
@@ -136,7 +136,7 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
           <section className="space-y-1.5">
             <span className="eyebrow">balance changes</span>
             {plan.diff.length === 0 && (
-              <p className="text-sm text-text-mid">No balance change detected.</p>
+              <p className="text-sm text-ink2">No balance change detected.</p>
             )}
             <div className="rounded-lg">
               {outs.map((d, i) => (
@@ -188,18 +188,18 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
 
 function SlipHeader({ plan }: { plan: Plan }) {
   return (
-    <div className="px-4 sm:px-5 pt-3.5 pb-3 border-b border-hairlineSoft flex items-start justify-between gap-3">
+    <div className="px-4 sm:px-5 pt-3.5 pb-3 border-b border-line/60 flex items-start justify-between gap-3">
       <div className="min-w-0">
         <span className="eyebrow">verification slip · {plan.kind}</span>
-        <div className="text-[13px] text-text-hi font-medium mt-1.5 leading-snug">
+        <div className="text-[13px] text-ink font-medium mt-1.5 leading-snug">
           {plan.intentSummary}
         </div>
       </div>
       <div className="text-right shrink-0 space-y-1.5">
-        <div className="num text-[10px] text-text-lo">{plan.id}</div>
+        <div className="num text-[10px] text-ink3">{plan.id}</div>
         <div className="flex gap-1 justify-end">
           <Tag>{plan.chain}</Tag>
-          <Tag tone={plan.mode === "mainnet" ? "neg" : "gold"}>
+          <Tag tone={plan.mode === "mainnet" ? "neg" : "magenta"}>
             {networkName(plan.chain, plan.mode)}
           </Tag>
         </div>
@@ -211,16 +211,16 @@ function SlipHeader({ plan }: { plan: Plan }) {
 function RouteStrip({ plan }: { plan: Plan }) {
   const r = plan.route!;
   return (
-    <div className="px-4 sm:px-5 py-3 border-b border-hairlineSoft bg-surface/40">
+    <div className="px-4 sm:px-5 py-3 border-b border-line/60 bg-paper2/40">
       <div className="flex items-center gap-1 flex-wrap">
         {r.steps.map((t, i) => (
           <React.Fragment key={`${t.mint}-${i}`}>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-ink px-2.5 py-1 font-mono text-[11px]">
-              <span className="h-1 w-1 rounded-full bg-gold" />
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-paper px-2.5 py-1 font-mono text-[11px]">
+              <span className="h-1 w-1 rounded-full bg-magenta" />
               {t.symbol}
             </span>
             {i < r.steps.length - 1 && (
-              <span className="text-text-lo text-[11px] px-0.5" aria-hidden>
+              <span className="text-ink3 text-[11px] px-0.5" aria-hidden>
                 ──▸
               </span>
             )}
@@ -245,22 +245,22 @@ function LedgerRow({ d, index }: { d: AssetDelta; index: number }) {
       className="flex items-baseline gap-2 py-2 animate-count-in"
       style={{ animationDelay: `${index * 55}ms` }}
     >
-      <span className="font-mono text-[13px] text-text-hi">{d.symbol}</span>
-      <span className="font-mono text-[9px] uppercase tracking-label text-text-lo">
+      <span className="font-mono text-[13px] text-ink">{d.symbol}</span>
+      <span className="font-mono text-[9px] uppercase tracking-label text-ink3">
         {neg ? "debit" : "credit"}
       </span>
       {d.ataCreated && (
-        <span className="font-mono text-[9px] text-text-lo border border-hairline rounded px-1">
+        <span className="font-mono text-[9px] text-ink3 border border-line rounded px-1">
           new acct
         </span>
       )}
       {/* dotted leader connecting label to value, receipt-style */}
-      <span className="flex-1 self-center border-b border-dotted border-hairline/70" />
+      <span className="flex-1 self-center border-b border-dotted border-line/70" />
       <span className="text-right">
         <span className={`num text-[15px] ${neg ? "text-neg" : "text-pos"}`}>
           {formatSigned(d.uiDelta)}
         </span>
-        <span className="num text-[10px] text-text-lo ml-2">
+        <span className="num text-[10px] text-ink3 ml-2">
           {d.usd != null ? formatUsd(d.usd) : "—"}
         </span>
       </span>
@@ -270,15 +270,15 @@ function LedgerRow({ d, index }: { d: AssetDelta; index: number }) {
 
 function BtcIoStrip({ inputs, outputs }: { inputs: BtcIo[]; outputs: BtcIo[] }) {
   return (
-    <section className="rounded-lg border border-hairlineSoft overflow-hidden">
-      <div className="grid grid-cols-2 divide-x divide-hairlineSoft">
+    <section className="rounded-lg border border-line/60 overflow-hidden">
+      <div className="grid grid-cols-2 divide-x divide-line/60">
         <div className="p-3">
           <span className="eyebrow">inputs · {inputs.length} utxo</span>
           <ul className="mt-2 space-y-1">
             {inputs.map((i, n) => (
               <li key={n} className="flex justify-between gap-2 font-mono text-[11px]">
-                <span className="text-text-lo">{shortAddr(i.address, 5)}</span>
-                <span className="num text-text-mid">{formatUi(i.valueSat / 1e8)}</span>
+                <span className="text-ink3">{shortAddr(i.address, 5)}</span>
+                <span className="num text-ink2">{formatUi(i.valueSat / 1e8)}</span>
               </li>
             ))}
           </ul>
@@ -288,11 +288,11 @@ function BtcIoStrip({ inputs, outputs }: { inputs: BtcIo[]; outputs: BtcIo[] }) 
           <ul className="mt-2 space-y-1">
             {outputs.map((o, n) => (
               <li key={n} className="flex justify-between gap-2 font-mono text-[11px]">
-                <span className="text-text-lo flex items-center gap-1">
+                <span className="text-ink3 flex items-center gap-1">
                   {shortAddr(o.address, 5)}
-                  {o.isChange && <span className="text-gold text-[9px]">change</span>}
+                  {o.isChange && <span className="text-magenta text-[9px]">change</span>}
                 </span>
-                <span className="num text-text-mid">{formatUi(o.valueSat / 1e8)}</span>
+                <span className="num text-ink2">{formatUi(o.valueSat / 1e8)}</span>
               </li>
             ))}
           </ul>
@@ -306,13 +306,13 @@ function FeeRow({ plan }: { plan: Plan }) {
   const f = plan.fee;
   const toNative = (n: number) => formatUi(n / 10 ** plan.nativeDecimals, 8);
   return (
-    <div className="flex items-baseline gap-2 border-t border-hairlineSoft pt-3">
+    <div className="flex items-baseline gap-2 border-t border-line/60 pt-3">
       <span className="eyebrow">{plan.chain === "bitcoin" ? "network fee" : "fee + rent"}</span>
-      <span className="flex-1 self-center border-b border-dotted border-hairline/70" />
-      <span className="num text-[12px] text-text-mid">
+      <span className="flex-1 self-center border-b border-dotted border-line/70" />
+      <span className="num text-[12px] text-ink2">
         {toNative(f.totalLamports)} {plan.nativeSymbol}
         {f.rentLamports > 0 && (
-          <span className="text-text-lo">
+          <span className="text-ink3">
             {"  "}({toNative(f.baseLamports + f.priorityLamports)}+{toNative(f.rentLamports)}r)
           </span>
         )}
@@ -323,8 +323,8 @@ function FeeRow({ plan }: { plan: Plan }) {
 
 function Guardrails({ checks, pass }: { checks: GuardrailCheck[]; pass: boolean }) {
   return (
-    <section className="relative rounded-lg border border-hairlineSoft overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-hairlineSoft">
+    <section className="relative rounded-lg border border-line/60 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-line/60">
         <span className="eyebrow">guardrail inspection</span>
       </div>
       {/* the inspection stamp */}
@@ -336,13 +336,13 @@ function Guardrails({ checks, pass }: { checks: GuardrailCheck[]; pass: boolean 
       >
         {pass ? "PASS" : "BLOCKED"}
       </div>
-      <ul className="divide-y divide-hairlineSoft">
+      <ul className="divide-y divide-line/60">
         {checks.map((c) => (
           <li key={c.id} className="flex items-start gap-2.5 px-3 py-2">
             <CheckIcon passed={c.passed} severity={c.severity} />
             <div className="min-w-0">
-              <div className="font-mono text-[11px] text-text-hi/90">{c.label}</div>
-              <div className="text-[11px] text-text-lo leading-snug">{c.detail}</div>
+              <div className="font-mono text-[11px] text-ink/90">{c.label}</div>
+              <div className="text-[11px] text-ink3 leading-snug">{c.detail}</div>
             </div>
           </li>
         ))}
@@ -364,7 +364,7 @@ function SimLogs({ logs, err }: { logs: string[]; err: unknown }) {
       <summary className="font-mono text-[11px] text-neg cursor-pointer">
         simulation failed — view logs
       </summary>
-      <pre className="mt-2 text-[10px] leading-relaxed text-text-mid overflow-x-auto max-h-48">
+      <pre className="mt-2 text-[10px] leading-relaxed text-ink2 overflow-x-auto max-h-48">
         {JSON.stringify(err, null, 2)}
         {"\n\n"}
         {logs.join("\n")}
@@ -412,7 +412,7 @@ function ConfirmZone({
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="num text-[11px] text-gold hover:underline break-all"
+          className="num text-[11px] text-magenta hover:underline break-all"
         >
           {shortAddr(state.signature, 8)} ↗
         </a>
@@ -428,16 +428,16 @@ function ConfirmZone({
     <div className="space-y-2.5 pt-1">
       {needsTyped && plan.signable && (
         <label className="block">
-          <span className="font-mono text-[11px] text-text-mid">
+          <span className="font-mono text-[11px] text-ink2">
             high value — type{" "}
-            <span className="text-gold">“{needsTyped}”</span> to arm:
+            <span className="text-magenta">“{needsTyped}”</span> to arm:
           </span>
           <input
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             placeholder={needsTyped}
             aria-label="Type the confirmation phrase"
-            className="mt-1.5 w-full rounded-lg bg-ink border border-hairline px-3 py-2 text-sm num placeholder:text-text-lo focus:border-gold outline-none"
+            className="mt-1.5 w-full rounded-lg bg-paper border border-line px-3 py-2 text-sm num placeholder:text-ink3 focus:border-magenta outline-none"
           />
         </label>
       )}
@@ -447,8 +447,8 @@ function ConfirmZone({
         disabled={!canConfirm || busy}
         className={`w-full rounded-lg px-4 py-3 font-mono text-[13px] tracking-label uppercase transition-colors ${
           canConfirm && !busy
-            ? "bg-gold text-ink hover:bg-gold-deep animate-arm-glow"
-            : "bg-panel text-text-lo border border-hairline cursor-not-allowed"
+            ? "bg-magenta text-paper hover:bg-ink"
+            : "bg-haze text-ink3 border border-line cursor-not-allowed"
         }`}
       >
         {busy ? busyLabel(state) : plan.signable ? "▲ arm & sign" : "⦸ signing locked"}
@@ -497,14 +497,14 @@ function Tag({
   tone = "muted",
 }: {
   children: React.ReactNode;
-  tone?: "muted" | "gold" | "neg";
+  tone?: "muted" | "magenta" | "neg";
 }) {
   const cls =
-    tone === "gold"
-      ? "border-gold/35 text-gold"
+    tone === "magenta"
+      ? "border-magenta/35 text-magenta"
       : tone === "neg"
         ? "border-neg/40 text-neg"
-        : "border-hairline text-text-mid";
+        : "border-line text-ink2";
   return (
     <span
       className={`font-mono text-[9px] uppercase tracking-label rounded border px-1.5 py-0.5 ${cls}`}
@@ -526,7 +526,7 @@ function Metric({
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className="eyebrow">{label}</span>
-      <span className={`num text-[11px] ${tone === "warn" ? "text-warn" : "text-text-mid"}`}>
+      <span className={`num text-[11px] ${tone === "warn" ? "text-warn" : "text-ink2"}`}>
         {children}
       </span>
     </span>

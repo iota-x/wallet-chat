@@ -2,8 +2,10 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useWalletChat } from "./WalletProviders";
 import { useActiveOwner } from "./wallet-hooks";
+import { ThemeToggle } from "./ThemeToggle";
 import { Chat } from "./Chat";
 import type { Chain, Mode } from "@/lib/types";
 import { CHAINS, networkName } from "@/lib/chains";
@@ -23,23 +25,26 @@ export function App() {
     <div className="h-dvh flex flex-col max-w-2xl mx-auto px-4">
       <header className="pt-5 pb-3 shrink-0">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <InstrumentMark />
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <GlassMark />
             <div className="leading-none">
-              <div className="font-mono text-[15px] font-semibold tracking-[0.02em] text-text-hi">
-                WALLETCHAT
+              <div className="font-mono text-[14px] font-medium tracking-tight text-ink group-hover:text-magenta transition-colors">
+                walletchat
               </div>
               <div className="eyebrow mt-1.5">transaction verifier</div>
             </div>
+          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <ConnectArea />
           </div>
-          <ConnectArea />
         </div>
 
         {/* Instrument status rail. */}
-        <div className="mt-4 rounded-xl border border-hairline bg-surface/70 px-2 py-2 flex items-center justify-between gap-2 flex-wrap">
+        <div className="mt-4 rounded-xl border border-line bg-paper2/70 px-2 py-2 flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <ChainSelector chain={chain} setChain={setChain} />
-            <span className="h-4 w-px bg-hairline hidden sm:block" />
+            <span className="h-4 w-px bg-line hidden sm:block" />
             <ModeToggle mode={mode} setMode={setMode} chain={chain} />
           </div>
           <StatusReadout owner={owner} chain={chain} mode={mode} />
@@ -59,13 +64,17 @@ export function App() {
   );
 }
 
-function InstrumentMark() {
+function GlassMark() {
   return (
-    <div className="h-9 w-9 rounded-lg border border-gold/35 bg-gold/[0.07] grid place-items-center relative overflow-hidden">
-      <div className="absolute inset-x-1.5 top-2 h-px bg-gold/25" />
-      <div className="absolute inset-x-1.5 bottom-2 h-px bg-gold/15" />
-      <span className="font-mono text-gold text-[13px] leading-none">₩</span>
-    </div>
+    <span
+      className="h-7 w-7 rounded-[8px] shrink-0"
+      style={{
+        background:
+          "conic-gradient(from 210deg, #C7B8F0, #8E97E8, #EBB2E4, #E6A15C, #C7B8F0)",
+        boxShadow: "inset 0 0 6px rgba(255,255,255,0.6)",
+      }}
+      aria-hidden
+    />
   );
 }
 
@@ -82,17 +91,17 @@ function StatusReadout({
     <div className="flex items-center gap-2 pr-1">
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          owner ? "bg-gold animate-blink" : "bg-text-lo"
+          owner ? "bg-magenta animate-blink" : "bg-ink3"
         }`}
       />
-      <span className="num text-[11px] text-text-mid">
+      <span className="num text-[11px] text-ink2">
         {owner ? shortAddr(owner, 4) : "no wallet"}
       </span>
       <span
         className={`eyebrow px-1.5 py-0.5 rounded border ${
           mode === "mainnet"
             ? "border-neg/40 text-neg"
-            : "border-gold/30 text-gold"
+            : "border-magenta/30 text-magenta"
         }`}
         title={networkName(chain, mode)}
       >
@@ -116,7 +125,7 @@ function ConnectArea() {
   return (
     <button
       onClick={() => onClick().catch((e) => alert(e.message))}
-      className="h-9 rounded-lg bg-panel border border-hairline px-3 text-[12px] font-mono text-text-hi hover:border-gold transition-colors"
+      className="h-9 rounded-lg bg-haze border border-line px-3 text-[12px] font-mono text-ink hover:border-magenta transition-colors"
     >
       {addr ? shortAddr(addr, 5) : label}
     </button>
@@ -142,8 +151,8 @@ function ChainSelector({
             onClick={() => setChain(c)}
             className={`font-mono text-[11px] px-2.5 py-1.5 rounded-md transition-colors ${
               active
-                ? "bg-panel text-gold border border-gold/30"
-                : "text-text-lo hover:text-text-mid border border-transparent"
+                ? "bg-haze text-magenta border border-magenta/30"
+                : "text-ink3 hover:text-ink2 border border-transparent"
             }`}
           >
             {CHAINS[c].nativeSymbol}
@@ -174,7 +183,7 @@ function ModeToggle({
             aria-selected={active}
             onClick={() => setMode(m)}
             className={`font-mono text-[11px] px-2 py-1.5 rounded-md transition-colors ${
-              active ? "bg-panel text-text-hi border border-hairline" : "text-text-lo hover:text-text-mid border border-transparent"
+              active ? "bg-haze text-ink border border-line" : "text-ink3 hover:text-ink2 border border-transparent"
             }`}
           >
             {networkName(chain, m)}

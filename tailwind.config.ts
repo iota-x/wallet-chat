@@ -1,50 +1,58 @@
 import type { Config } from "tailwindcss";
 
-// ── "The Verification Instrument" ────────────────────────────────────────────
-// WalletChat as a precision ledger instrument that prints a verification slip
-// for every intent. Deep cool ink, one disciplined signal-gold accent, and the
-// semantically-required green/red for money in/out. The machine reports in mono
-// on ruled paper; the human speaks in sans.
+// ── "The transaction, made transparent." ─────────────────────────────────────
+// Editorial, gallery-light. One iridescent glass artifact, huge tight grotesque
+// type, and magenta annotation callouts that inspect it — the visual language of
+// a transaction verifier. Paper is a cool neutral white (not warm cream), the
+// accent is magenta (not clay), the iridescence is lilac→periwinkle→amber.
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Theme-swappable via CSS vars (see globals: :root light, [data-theme=dark]).
+      // The glass gradient colors (lilac/peri/amber/magenta-soft) stay constant
+      // across themes so the iridescent identity holds in both.
       colors: {
-        ink: "#080A0F", // canvas — deep cool ink, not pure black
-        surface: "#0E121A", // lifted surface
-        panel: "#141A24", // controls / raised
-        slip: "#10141C", // the verification-slip paper
-        slipEdge: "#0B0E14", // perforation gutter behind the slip
-        hairline: "#222A38",
-        hairlineSoft: "#1A212C",
-        "text-hi": "#E9EDF4", // primary text (cool white)
-        "text-mid": "#8B94A6",
-        "text-lo": "#565F71",
-        gold: "#EEC069", // the one accent — brand + arm-to-sign
-        "gold-deep": "#C79A45",
-        "gold-dim": "#7A6533",
-        pos: "#5CC08C", // received / credit
-        neg: "#EC6A5E", // spent / debit
-        warn: "#E0A94A", // guardrail warnings
+        paper: "rgb(var(--c-paper) / <alpha-value>)",
+        paper2: "rgb(var(--c-paper2) / <alpha-value>)",
+        haze: "rgb(var(--c-haze) / <alpha-value>)",
+        line: "rgb(var(--c-line) / <alpha-value>)",
+        ink: "rgb(var(--c-ink) / <alpha-value>)",
+        ink2: "rgb(var(--c-ink2) / <alpha-value>)",
+        ink3: "rgb(var(--c-ink3) / <alpha-value>)",
+        magenta: "rgb(var(--c-magenta) / <alpha-value>)",
+        pos: "rgb(var(--c-pos) / <alpha-value>)",
+        neg: "rgb(var(--c-neg) / <alpha-value>)",
+        warn: "rgb(var(--c-warn) / <alpha-value>)",
+        "magenta-soft": "#F0A9DE",
+        lilac: "#B4A4E4",
+        peri: "#8E97E8",
+        amber: "#E6A15C",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       letterSpacing: {
-        label: "0.14em",
+        tight2: "-0.03em",
+        label: "0.16em",
       },
       keyframes: {
-        // The slip "prints" downward like paper feeding from a receipt printer.
-        "print-in": {
-          "0%": { opacity: "0", clipPath: "inset(0 0 100% 0)", transform: "translateY(-6px)" },
-          "100%": { opacity: "1", clipPath: "inset(0 0 0% 0)", transform: "translateY(0)" },
+        "rise-in": {
+          "0%": { opacity: "0", transform: "translateY(14px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        // An inspection stamp pressing onto the slip, settling at a slight angle.
-        "stamp-in": {
-          "0%": { opacity: "0", transform: "scale(1.5) rotate(-9deg)" },
-          "60%": { opacity: "1" },
-          "100%": { opacity: "1", transform: "scale(1) rotate(-5deg)" },
+        "draw-line": {
+          "0%": { strokeDashoffset: "220" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        "glass-float": {
+          "0%,100%": { transform: "translateY(0) rotate(0deg)" },
+          "50%": { transform: "translateY(-14px) rotate(0.6deg)" },
+        },
+        "hue-drift": {
+          "0%": { filter: "hue-rotate(0deg)" },
+          "100%": { filter: "hue-rotate(24deg)" },
         },
         "count-in": {
           "0%": { opacity: "0", transform: "translateY(0.3em)" },
@@ -54,23 +62,29 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(6px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        shimmer: { "100%": { transform: "translateX(100%)" } },
-        // The arm-to-sign control energizing once when guardrails pass.
-        "arm-glow": {
-          "0%": { boxShadow: "0 0 0 0 rgba(238,192,105,0)" },
-          "40%": { boxShadow: "0 0 22px 2px rgba(238,192,105,0.35)" },
-          "100%": { boxShadow: "0 0 0 0 rgba(238,192,105,0)" },
+        "print-in": {
+          "0%": { opacity: "0", clipPath: "inset(0 0 100% 0)" },
+          "100%": { opacity: "1", clipPath: "inset(0 0 0% 0)" },
+        },
+        "stamp-in": {
+          "0%": { opacity: "0", transform: "scale(1.5) rotate(-9deg)" },
+          "60%": { opacity: "1" },
+          "100%": { opacity: "1", transform: "scale(1) rotate(-5deg)" },
         },
         blink: { "0%,100%": { opacity: "1" }, "50%": { opacity: "0.25" } },
+        shimmer: { "100%": { transform: "translateX(100%)" } },
       },
       animation: {
-        "print-in": "print-in 0.5s cubic-bezier(0.22,1,0.36,1) both",
-        "stamp-in": "stamp-in 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
+        "rise-in": "rise-in 0.7s cubic-bezier(0.16,1,0.3,1) both",
+        "draw-line": "draw-line 0.9s ease-out 0.4s both",
+        "glass-float": "glass-float 9s ease-in-out infinite",
+        "hue-drift": "hue-drift 14s ease-in-out infinite alternate",
         "count-in": "count-in 0.5s cubic-bezier(0.16,1,0.3,1) both",
         "fade-up": "fade-up 0.4s cubic-bezier(0.16,1,0.3,1) both",
-        shimmer: "shimmer 1.6s infinite",
-        "arm-glow": "arm-glow 1.8s ease-out",
+        "print-in": "print-in 0.5s cubic-bezier(0.22,1,0.36,1) both",
+        "stamp-in": "stamp-in 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
         blink: "blink 1.1s step-end infinite",
+        shimmer: "shimmer 1.6s infinite",
       },
     },
   },

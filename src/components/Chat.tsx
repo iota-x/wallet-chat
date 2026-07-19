@@ -102,8 +102,8 @@ export function Chat() {
         }}
         className="pb-2"
       >
-        <div className="flex items-end gap-2 rounded-xl border border-hairline bg-surface/80 focus-within:border-gold/50 transition-colors px-3 py-2">
-          <span className="font-mono text-gold text-sm pb-2.5 select-none">›</span>
+        <div className="flex items-end gap-2 rounded-xl border border-line bg-paper2/80 focus-within:border-magenta/50 transition-colors px-3 py-2">
+          <span className="font-mono text-magenta text-sm pb-2.5 select-none">›</span>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -117,12 +117,12 @@ export function Chat() {
             placeholder={disabled ? "Connect a wallet to begin…" : "State an intent…"}
             disabled={disabled}
             aria-label="Message"
-            className="flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-text-lo max-h-40 disabled:opacity-50"
+            className="flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-ink3 max-h-40 disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={disabled || busy || !input.trim()}
-            className="shrink-0 rounded-lg bg-gold text-ink h-9 w-9 grid place-items-center font-mono text-base disabled:bg-panel disabled:text-text-lo transition-colors hover:bg-gold-deep"
+            className="shrink-0 rounded-lg bg-magenta text-paper h-9 w-9 grid place-items-center font-mono text-base disabled:bg-haze disabled:text-ink3 transition-colors hover:bg-ink"
             aria-label="Send"
           >
             ↵
@@ -157,11 +157,11 @@ function PartView({
     const text = (part as { text: string }).text;
     if (!text) return null;
     return isUser ? (
-      <div className="rounded-2xl rounded-br-sm bg-panel/70 border-r-2 border-gold/50 px-3.5 py-2.5 text-sm leading-relaxed text-text-hi whitespace-pre-wrap">
+      <div className="rounded-2xl rounded-br-sm bg-haze/70 border-r-2 border-magenta/50 px-3.5 py-2.5 text-sm leading-relaxed text-ink whitespace-pre-wrap">
         {text}
       </div>
     ) : (
-      <div className="text-sm leading-relaxed text-text-mid whitespace-pre-wrap px-0.5">
+      <div className="text-sm leading-relaxed text-ink2 whitespace-pre-wrap px-0.5">
         {text}
       </div>
     );
@@ -220,7 +220,7 @@ function ToolNote({
       className={`font-mono text-[11px] tracking-wide ${
         tone === "neg"
           ? "text-neg border border-neg/30 bg-neg/5 rounded-lg px-3 py-2"
-          : "text-text-lo px-0.5"
+          : "text-ink3 px-0.5"
       }`}
     >
       {children}
@@ -230,7 +230,7 @@ function ToolNote({
 
 function Thinking() {
   return (
-    <div className="flex items-center gap-2 px-1 font-mono text-[11px] text-text-lo">
+    <div className="flex items-center gap-2 px-1 font-mono text-[11px] text-ink3">
       <span className="animate-blink">▍</span>
       <span className="tracking-label uppercase">verifying</span>
     </div>
@@ -250,12 +250,12 @@ function EmptyState({
     <div className="min-h-full flex flex-col items-center justify-center text-center px-2 py-8 gap-6 sm:gap-7">
       <div className="space-y-3 max-w-md">
         <div className="eyebrow">state intent · read the risk · then sign</div>
-        <h2 className="text-[22px] sm:text-[28px] leading-[1.15] font-semibold text-text-hi tracking-tight">
+        <h2 className="text-[22px] sm:text-[28px] leading-[1.15] font-semibold text-ink tracking-tight">
           See exactly what a transaction does
           <br />
           before it happens.
         </h2>
-        <p className="text-[13px] text-text-mid leading-relaxed">
+        <p className="text-[13px] text-ink2 leading-relaxed">
           Plan an intent in plain language. WalletChat simulates it against live
           chain state and prints a verification slip with the exact balance diff —
           nothing signs until every guardrail passes and you arm it.
@@ -270,7 +270,7 @@ function EmptyState({
             key={s}
             onClick={() => onPick(s)}
             disabled={disabled}
-            className="font-mono text-[11px] rounded-lg border border-hairline bg-surface/60 px-3 py-1.5 text-text-mid hover:text-text-hi hover:border-gold/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="font-mono text-[11px] rounded-lg border border-line bg-paper2/60 px-3 py-1.5 text-ink2 hover:text-ink hover:border-magenta/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {s}
           </button>
@@ -285,22 +285,22 @@ function SpecimenSlip() {
   return (
     <div className="relative w-full max-w-sm sm:max-w-md select-none opacity-90">
       <div className="perforation" />
-      <div className="ledger-rule rounded-b-xl border border-hairline border-t-0 bg-slip px-4 pt-3 pb-4 relative overflow-hidden">
+      <div className="ledger-rule rounded-b-xl border border-line border-t-0 slip-paper px-4 pt-3 pb-4 relative overflow-hidden">
         <div
-          className="absolute right-3 top-6 font-mono text-[26px] font-semibold text-text-lo/25 tracking-widest -rotate-[8deg] border-2 border-text-lo/20 rounded px-2"
+          className="absolute right-3 top-6 font-mono text-[26px] font-semibold text-ink3/25 tracking-widest -rotate-[8deg] border-2 border-ink3/20 rounded px-2"
           aria-hidden
         >
           SPECIMEN
         </div>
         <div className="flex items-center justify-between">
           <span className="eyebrow">verification slip</span>
-          <span className="num text-[10px] text-text-lo">plan · example</span>
+          <span className="num text-[10px] text-ink3">plan · example</span>
         </div>
         <div className="mt-3 space-y-1.5 text-left">
           <SpecimenRow sym="USDC" v="−250.00" tone="neg" />
           <SpecimenRow sym="JitoSOL" v="+1.6820" tone="pos" />
         </div>
-        <div className="mt-3 pt-2 border-t border-hairlineSoft flex items-center justify-between">
+        <div className="mt-3 pt-2 border-t border-line/60 flex items-center justify-between">
           <span className="eyebrow">guardrails</span>
           <span className="font-mono text-[11px] text-pos tracking-label">PASS</span>
         </div>
@@ -312,7 +312,7 @@ function SpecimenSlip() {
 function SpecimenRow({ sym, v, tone }: { sym: string; v: string; tone: "pos" | "neg" }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="font-mono text-[12px] text-text-mid">{sym}</span>
+      <span className="font-mono text-[12px] text-ink2">{sym}</span>
       <span className={`num text-[13px] ${tone === "pos" ? "text-pos" : "text-neg"}`}>{v}</span>
     </div>
   );

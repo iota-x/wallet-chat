@@ -77,11 +77,14 @@ Wallets by chain: **Solana** → Phantom/Solflare (wallet-adapter); **Ethereum**
 ## Run
 
 ```bash
-npm run dev        # app at http://localhost:3000
+npm run dev        # landing at http://localhost:3000 · product at /app
 ```
 
-Connect a wallet (Phantom/Solflare), pick a mode, and state an intent. On **devnet** the confirm
-flow re-simulates, signs in your wallet, submits, and links the transaction on Explorer.
+The landing page (`/`) is an editorial, glass-themed intro; the product lives at `/app`. A
+light/dark toggle (top-right) switches themes — the iridescent glass identity holds in both.
+Connect a wallet (Phantom/Solflare · MetaMask · Unisat), pick a chain and tier, and state an
+intent. On a test tier the confirm flow re-simulates, signs in your wallet, submits, and links
+the transaction on the explorer.
 
 ## Verify (this is where the claims are backed up)
 

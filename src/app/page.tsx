@@ -1,10 +1,5 @@
-import { WalletProviders } from "@/components/WalletProviders";
-import { App } from "@/components/App";
+import { Landing } from "@/components/Landing";
 
 export default function Page() {
-  return (
-    <WalletProviders>
-      <App />
-    </WalletProviders>
-  );
+  return <Landing />;
 }

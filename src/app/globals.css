@@ -2,8 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light = the gallery-white inspiration. */
 :root {
+  color-scheme: light;
+  --c-paper: 238 238 241;
+  --c-paper2: 247 247 250;
+  --c-haze: 231 230 236;
+  --c-line: 219 218 225;
+  --c-ink: 20 18 24;
+  --c-ink2: 81 76 89;
+  --c-ink3: 139 135 148;
+  --c-magenta: 213 30 166;
+  --c-pos: 20 154 99;
+  --c-neg: 209 70 50;
+  --c-warn: 180 122 30;
+  --slip-top: #fcfcfe;
+  --slip-bot: #f6f5f9;
+  --rule: rgba(90, 70, 130, 0.05);
+  --glass-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 18px 50px -24px rgba(60, 40, 90, 0.28);
+  --haze-a: 0.28;
+}
+
+/* Dark = the same iridescent glass on a deep aubergine ground. */
+:root[data-theme="dark"] {
   color-scheme: dark;
+  --c-paper: 18 16 24;
+  --c-paper2: 28 25 37;
+  --c-haze: 40 36 52;
+  --c-line: 51 46 64;
+  --c-ink: 236 234 242;
+  --c-ink2: 183 178 197;
+  --c-ink3: 129 122 146;
+  --c-magenta: 238 92 200;
+  --c-pos: 63 208 140;
+  --c-neg: 240 115 106;
+  --c-warn: 224 169 74;
+  --slip-top: #211d2c;
+  --slip-bot: #191622;
+  --rule: rgba(180, 164, 228, 0.06);
+  --glass-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 22px 60px -28px rgba(0, 0, 0, 0.7);
+  --haze-a: 0.4;
 }
 
 html,
@@ -12,20 +54,26 @@ body {
 }
 
 body {
-  /* Deep ink with a faint plotter grid — an instrument screen, not flat black. */
-  background-color: theme("colors.ink");
+  background-color: theme("colors.paper");
+  /* Iridescent haze bleeding from the upper-right, like light through glass. */
   background-image:
-    radial-gradient(140% 90% at 50% -20%, rgba(37, 46, 66, 0.28) 0%, transparent 55%),
-    linear-gradient(rgba(120, 140, 180, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 140, 180, 0.028) 1px, transparent 1px);
-  background-size: 100% 100%, 34px 34px, 34px 34px;
+    radial-gradient(60% 55% at 88% 8%, rgba(180, 164, 228, var(--haze-a)) 0%, transparent 60%),
+    radial-gradient(50% 45% at 96% 30%, rgba(230, 161, 92, calc(var(--haze-a) * 0.5)) 0%, transparent 55%),
+    radial-gradient(45% 40% at 78% 2%, rgba(142, 151, 232, calc(var(--haze-a) * 0.6)) 0%, transparent 60%);
   background-attachment: fixed;
-  color: theme("colors.text-hi");
+  color: theme("colors.ink");
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Numbers live in tabular mono everywhere. */
+/* Iridescent gradient headline word — the "glass effect" on type. */
+.glass-text {
+  background: linear-gradient(100deg, #8e97e8 0%, #b4a4e4 32%, #ebb2e4 64%, #e6a15c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 .num {
   font-family: theme("fontFamily.mono");
   font-variant-numeric: tabular-nums;
@@ -33,93 +81,100 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Instrument label: tiny, tracked-out mono caps. */
+/* Annotation label — the mono tag on a callout, like the ref's "glass" crop tag. */
 .eyebrow {
   font-family: theme("fontFamily.mono");
   text-transform: uppercase;
   letter-spacing: theme("letterSpacing.label");
   font-size: 10px;
-  color: theme("colors.text-lo");
+  color: theme("colors.ink3");
 }
 
-/* Faint ledger ruling for the verification slip. */
+/* Frosted glass surface for cards and callouts. */
+.glass {
+  background: var(--glass-grad);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* The verification slip — a real paper receipt (light) / glass slab (dark).
+ * Uses background-COLOR so `.ledger-rule` can layer its lines on top. */
+.slip-paper {
+  background-color: var(--slip-top);
+  box-shadow: 0 26px 60px -30px rgba(40, 20, 70, 0.35);
+}
 .ledger-rule {
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
     transparent 33px,
-    rgba(130, 148, 180, 0.05) 33px,
-    rgba(130, 148, 180, 0.05) 34px
+    var(--rule) 33px,
+    var(--rule) 34px
   );
 }
-
-/* Perforated top edge of the slip — notches cut out of the paper via a mask so
- * the ink background shows through, giving a real torn-receipt edge. */
 .perforation {
   height: 9px;
-  background-color: theme("colors.slip");
-  border-top: 1px solid theme("colors.hairline");
+  background-color: var(--slip-top);
   -webkit-mask: radial-gradient(circle at 6px 0, transparent 3.4px, #000 3.7px) 0 0 / 12px 100% repeat-x;
   mask: radial-gradient(circle at 6px 0, transparent 3.4px, #000 3.7px) 0 0 / 12px 100% repeat-x;
 }
 
-/* Thin scrollbar matching the ink. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: theme("colors.hairline") transparent;
+  scrollbar-color: theme("colors.line") transparent;
 }
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
 }
 *::-webkit-scrollbar-thumb {
-  background: theme("colors.hairline");
+  background: theme("colors.line");
   border-radius: 999px;
 }
 
-/* Streaming skeleton shimmer. */
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: theme("colors.panel");
+  background: theme("colors.haze");
 }
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
   animation: shimmer 1.6s infinite;
 }
 
 :focus-visible {
-  outline: 2px solid theme("colors.gold");
+  outline: 2px solid theme("colors.magenta");
   outline-offset: 2px;
   border-radius: 3px;
 }
 
-/* Theme the Solana wallet-adapter button to the instrument palette. */
+/* Wallet-adapter button on light paper. */
 .wallet-adapter-button {
   font-family: theme("fontFamily.mono") !important;
   font-size: 12px !important;
-  letter-spacing: 0.02em !important;
-  color: theme("colors.text-hi") !important;
-  background-color: theme("colors.panel") !important;
-  border: 1px solid theme("colors.hairline") !important;
-  border-radius: 8px !important;
-  height: 36px !important;
-  transition: border-color 0.15s ease, background-color 0.15s ease !important;
+  color: theme("colors.ink") !important;
+  background-color: theme("colors.paper2") !important;
+  border: 1px solid theme("colors.line") !important;
+  border-radius: 999px !important;
+  height: 38px !important;
+  padding-inline: 16px !important;
+  transition: border-color 0.15s ease !important;
 }
 .wallet-adapter-button:not([disabled]):hover {
-  background-color: theme("colors.panel") !important;
-  border-color: theme("colors.gold") !important;
+  background-color: theme("colors.paper2") !important;
+  border-color: theme("colors.magenta") !important;
 }
 .wallet-adapter-modal-wrapper {
-  background: theme("colors.surface") !important;
-  border: 1px solid theme("colors.hairline");
+  background: theme("colors.paper2") !important;
 }
 .wallet-adapter-modal-title {
-  color: theme("colors.text-hi") !important;
+  color: theme("colors.ink") !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
