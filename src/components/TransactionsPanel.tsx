@@ -5,10 +5,13 @@ import {
   listTransactions,
   clearTransactions,
   updateTxStatus,
+  setReconciliation,
   explorerUrl,
   type TxRecord,
+  type ReconcileDelta,
 } from "@/lib/tx-store";
 import { checkTxStatus } from "@/lib/tx-status";
+import { compareDeltas } from "@/lib/reconcile";
 import { CHAINS } from "@/lib/chains";
 import { shortAddr } from "@/lib/format";
 
@@ -36,25 +39,83 @@ function StatusPill({ status }: { status: TxRecord["status"] }) {
   );
 }
 
+/** Fetch actual on-chain movement and diff it against the stored prediction. */
+async function reconcile(t: TxRecord, inFlight: Set<string>) {
+  inFlight.add(t.id);
+  try {
+    if (t.chain === "bitcoin") {
+      setReconciliation(t.id, {
+        status: "unavailable",
+        note: "Bitcoin has no post-state to diff — the broadcast matches the PSBT preview by construction.",
+        at: Date.now(),
+      });
+      return;
+    }
+    const res = await fetch("/api/reconcile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chain: t.chain, mode: t.mode, signature: t.signature, owner: t.owner }),
+    });
+    const data = (await res.json()) as { actual?: ReconcileDelta[] | null };
+    if (!res.ok || !data.actual) return; // not indexed yet — retry next tick
+    const cmp = compareDeltas(t.predicted ?? [], data.actual);
+    const note =
+      cmp.status === "matched"
+        ? "Reality matched the simulated diff to within tolerance."
+        : "Drift — " + cmp.lines.filter((l) => l.startsWith("✕")).join(" · ");
+    setReconciliation(t.id, { status: cmp.status, note, at: Date.now() });
+  } catch {
+    /* transient — retry next tick */
+  } finally {
+    inFlight.delete(t.id);
+  }
+}
+
+function ReconcileBadge({ r }: { r: NonNullable<TxRecord["reconciliation"]> }) {
+  const map = {
+    matched: { c: "text-pos border-pos/40", t: "✓ verified", },
+    drift: { c: "text-warn border-warn/40", t: "▲ drifted" },
+    unavailable: { c: "text-ink3 border-line", t: "— n/a" },
+  }[r.status];
+  return (
+    <span
+      title={r.note}
+      className={`inline-flex items-center font-mono text-[9px] uppercase tracking-label rounded border px-1.5 py-0.5 ${map.c}`}
+    >
+      {map.t}
+    </span>
+  );
+}
+
 export function TransactionsPanel({ onClose }: { onClose: () => void }) {
   const [txns, setTxns] = useState<TxRecord[]>([]);
 
   useEffect(() => setTxns(listTransactions()), []);
 
-  // Poll pending transactions to confirmation while the panel is open.
+  // Poll pending transactions to confirmation and reconcile confirmed ones.
   useEffect(() => {
     let cancelled = false;
+    const reconciling = new Set<string>();
+
     async function tick() {
+      // 1) Advance pending → confirmed/failed.
       const pending = listTransactions().filter((t) => t.status === "pending");
-      if (pending.length === 0) return;
-      await Promise.all(
-        pending.map(async (t) => {
-          const s = await checkTxStatus(t.chain, t.mode, t.signature);
-          if (s !== "pending") updateTxStatus(t.id, s);
-        })
+      if (pending.length > 0) {
+        await Promise.all(
+          pending.map(async (t) => {
+            const s = await checkTxStatus(t.chain, t.mode, t.signature);
+            if (s !== "pending") updateTxStatus(t.id, s);
+          })
+        );
+      }
+      // 2) Reconcile confirmed txns that carry a prediction but no verdict yet.
+      const toReconcile = listTransactions().filter(
+        (t) => t.status === "confirmed" && t.predicted && !t.reconciliation && !reconciling.has(t.id)
       );
+      await Promise.all(toReconcile.map((t) => reconcile(t, reconciling)));
       if (!cancelled) setTxns(listTransactions());
     }
+
     tick();
     const iv = setInterval(tick, 6000);
     return () => {
@@ -122,12 +183,18 @@ export function TransactionsPanel({ onClose }: { onClose: () => void }) {
               </div>
               <div className="flex items-center gap-2 mt-1.5 pl-[2px]">
                 <StatusPill status={t.status} />
+                {t.reconciliation && <ReconcileBadge r={t.reconciliation} />}
                 {t.delta && <span className="num text-[11px] text-ink2">{t.delta}</span>}
                 <span className="flex-1" />
                 <span className="num text-[11px] text-magenta">
                   {shortAddr(t.signature, 6)} ↗
                 </span>
               </div>
+              {t.reconciliation && t.reconciliation.status === "drift" && (
+                <p className="mt-1 pl-[2px] text-[10.5px] text-warn leading-snug">
+                  {t.reconciliation.note}
+                </p>
+              )}
             </a>
           ))}
         </div>

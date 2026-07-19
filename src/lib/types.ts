@@ -22,7 +22,15 @@ export type Mode = "devnet" | "mainnet";
  */
 export type Chain = "solana" | "ethereum" | "bitcoin";
 
-export type PlanKind = "transfer" | "swap" | "wrap" | "unwrap" | "stake" | "unknown";
+export type PlanKind =
+  | "transfer"
+  | "swap"
+  | "wrap"
+  | "unwrap"
+  | "stake"
+  | "approve"
+  | "revoke"
+  | "unknown";
 
 /** One asset's exact change, decoded from simulated post-state vs live pre-state. */
 export interface AssetDelta {

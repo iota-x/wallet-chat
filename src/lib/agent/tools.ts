@@ -14,6 +14,7 @@ import { getAssociatedTokenAddress, readTokenBalance } from "@/lib/solana/tokens
 import { readBalances } from "./balances";
 import { buildTransfer } from "@/lib/solana/build";
 import { getJupiterQuote, buildJupiterSwapTx } from "@/lib/jupiter";
+import { isSolName, resolveSolDomain } from "@/lib/names/resolve";
 import { assemblePlan } from "./plan";
 import type { WatchedAsset } from "@/lib/solana/simulate";
 
@@ -124,7 +125,7 @@ export function createTools(ctx: ToolContext) {
       description:
         "Build, simulate, and guardrail a transfer of SOL or an SPL token to a destination address. Returns a typed Plan the UI renders. Does NOT sign or send.",
       inputSchema: z.object({
-        destination: z.string().describe("recipient base58 public key"),
+        destination: z.string().describe("recipient base58 public key or SNS name (e.g. name.sol)"),
         symbol: z.string().describe("token symbol, e.g. SOL or USDC"),
         amount: z.number().optional().describe("absolute amount in UI units"),
         fraction: z.number().optional().describe("fraction of balance 0..1"),
@@ -134,11 +135,21 @@ export function createTools(ctx: ToolContext) {
         const mint = meta?.mints[mode];
         if (!meta || !mint)
           return { error: `Token ${input.symbol} is not available on ${mode}.` };
+        // Resolve an SNS name before validating the address.
+        let destStr = input.destination.trim();
+        let snsName: string | null = null;
+        if (isSolName(destStr)) {
+          const resolved = await resolveSolDomain(destStr);
+          if (!resolved)
+            return { error: `Could not resolve SNS name ${destStr} — it may be unregistered.` };
+          snsName = destStr;
+          destStr = resolved;
+        }
         let dest: PublicKey;
         try {
-          dest = new PublicKey(input.destination);
+          dest = new PublicKey(destStr);
         } catch {
-          return { error: `Invalid destination address: ${input.destination}` };
+          return { error: `Invalid destination address: ${destStr}` };
         }
         const bal = await balanceOf(ctx, mint, meta.decimals);
         const amount = resolveAmount(bal, meta.decimals, mint === NATIVE_SOL, input);
@@ -157,17 +168,20 @@ export function createTools(ctx: ToolContext) {
           amountBaseUnits: amount,
         });
         const ui = Number(amount) / 10 ** meta.decimals;
+        const destLabel = snsName
+          ? `${snsName} (${destStr.slice(0, 4)}…${destStr.slice(-4)})`
+          : `${destStr.slice(0, 4)}…${destStr.slice(-4)}`;
         const plan = await assemblePlan({
           connection,
           mode,
           owner,
           kind: "transfer",
-          intentSummary: `Send ${ui} ${meta.symbol} to ${input.destination.slice(0, 4)}…${input.destination.slice(-4)}`,
+          intentSummary: `Send ${ui} ${meta.symbol} to ${destLabel}`,
           tx: built.tx,
           watchedAssets: built.watchedAssets,
           route: null,
           quote: null,
-          recipient: input.destination,
+          recipient: destStr,
           policyOverride: ctx.policyOverride,
           allowMainnetSign: ctx.allowMainnetSign,
         });

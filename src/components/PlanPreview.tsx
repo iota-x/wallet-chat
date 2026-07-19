@@ -159,6 +159,14 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
         summary: fresh.intentSummary,
         recipient: fresh.recipient ?? null,
         outflowUsd: planOutflowUsd(fresh.diff),
+        predicted: fresh.diff
+          .filter((d) => BigInt(d.delta) !== 0n)
+          .map((d) => ({
+            symbol: d.symbol,
+            mint: d.mint,
+            uiDelta: d.uiDelta,
+            isNative: d.isNative,
+          })),
         // Solana is awaited to confirmation above; EVM/BTC are broadcast only.
         status: fresh.chain === "solana" ? "confirmed" : "pending",
         delta: fresh.diff

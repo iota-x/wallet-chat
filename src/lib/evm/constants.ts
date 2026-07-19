@@ -142,6 +142,12 @@ export const EVM_TOKENS: Record<string, EvmTokenMeta> = {
   },
 };
 
+/** Known spender contracts the app itself may cause approvals to (DEX routers).
+ * Also the set the allowance viewer checks curated tokens against. */
+export const KNOWN_SPENDERS: { address: string; label: string }[] = [
+  { address: "0x6131b5fae19ea4f9d964eac0408e4408b66337b5", label: "KyberSwap router" },
+];
+
 export function evmTokenBySymbol(symbol: string): EvmTokenMeta | null {
   const key = Object.keys(EVM_TOKENS).find(
     (k) => k.toLowerCase() === symbol.toLowerCase()

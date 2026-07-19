@@ -57,6 +57,43 @@ async function estimateGas(
   }
 }
 
+/** Build an unsigned ERC-20 approve(spender, amount). amount 0n = a revoke. */
+export async function buildEvmApproval(params: {
+  mode: Mode;
+  owner: Address;
+  token: Address;
+  spender: Address;
+  amountBaseUnits: bigint;
+}): Promise<BuiltEvmTx> {
+  const { mode, owner, token, spender, amountBaseUnits } = params;
+  const data = encodeFunctionData({
+    abi: ERC20_ABI,
+    functionName: "approve",
+    args: [spender, amountBaseUnits],
+  });
+  const [{ maxFeePerGas, maxPriorityFeePerGas }, gas] = await Promise.all([
+    estimateEvmFees(mode),
+    estimateGas(mode, owner, token, data, 0n),
+  ]);
+  const tx: EvmTxRequest = {
+    chainId: evmChainId(mode),
+    from: owner,
+    to: token,
+    data,
+    value: "0",
+    gas: gas.toString(),
+    maxFeePerGas: maxFeePerGas.toString(),
+    maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+  };
+  // Watch the token (its balance won't change, but the diff decode expects a list)
+  // plus native for the gas delta.
+  return {
+    tx,
+    watched: [{ address: NATIVE_ETH, symbol: "ETH", decimals: 18 }],
+    targets: [token.toLowerCase()],
+  };
+}
+
 export async function buildEvmTransfer(params: {
   mode: Mode;
   owner: Address;

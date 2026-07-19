@@ -14,6 +14,7 @@ import { readBalancesRaw } from "@/lib/evm/rpc";
 import { buildEvmTransfer } from "@/lib/evm/build";
 import { buildEvmSwap } from "@/lib/evm/swap";
 import { assembleEvmPlan } from "@/lib/evm/plan";
+import { isEnsName, resolveEnsName } from "@/lib/names/resolve";
 
 /** Ethereum tools. owner + mode are bound from the request, never by the model. */
 export interface EvmToolContext {
@@ -73,7 +74,7 @@ export function createEvmTools(ctx: EvmToolContext) {
       description:
         "Build, simulate (eth_simulateV1) and guardrail an ETH or ERC-20 transfer. Returns a typed Plan. Does NOT sign or send.",
       inputSchema: z.object({
-        destination: z.string().describe("recipient 0x address"),
+        destination: z.string().describe("recipient 0x address or ENS name (e.g. name.eth)"),
         symbol: z.string().describe("ETH, USDC, WETH, DAI, …"),
         amount: z.number().optional(),
         fraction: z.number().optional().describe("0..1 of balance"),
@@ -83,8 +84,18 @@ export function createEvmTools(ctx: EvmToolContext) {
         const addr = meta?.addresses[mode];
         if (!meta || !addr)
           return { error: `Token ${input.symbol} is not available on ${mode}.` };
-        if (!isAddress(input.destination))
-          return { error: `Invalid destination address: ${input.destination}` };
+        // Resolve an ENS name to an address before anything else touches it.
+        let destination = input.destination.trim();
+        let ensName: string | null = null;
+        if (isEnsName(destination)) {
+          const resolved = await resolveEnsName(destination);
+          if (!resolved)
+            return { error: `Could not resolve ENS name ${destination} — it may be unregistered.` };
+          ensName = destination;
+          destination = resolved;
+        }
+        if (!isAddress(destination))
+          return { error: `Invalid destination address: ${destination}` };
         const bal = await evmBalanceOf(mode, owner, addr);
         const amount = resolveEvmAmount(bal, meta.decimals, isNativeEth(addr), input);
         if (amount <= 0n) return { error: "Resolved amount is zero." };
@@ -93,24 +104,28 @@ export function createEvmTools(ctx: EvmToolContext) {
         const built = await buildEvmTransfer({
           mode,
           owner,
-          to: getAddress(input.destination),
+          to: getAddress(destination),
           tokenAddress: addr,
           decimals: meta.decimals,
           symbol: meta.symbol,
           amountBaseUnits: amount,
         });
         const ui = Number(amount) / 10 ** meta.decimals;
+        const dest = getAddress(destination);
+        const destLabel = ensName
+          ? `${ensName} (${dest.slice(0, 6)}…${dest.slice(-4)})`
+          : `${dest.slice(0, 6)}…${dest.slice(-4)}`;
         return assembleEvmPlan({
           mode,
           owner,
           kind: "transfer",
-          intentSummary: `Send ${ui} ${meta.symbol} to ${input.destination.slice(0, 6)}…${input.destination.slice(-4)}`,
+          intentSummary: `Send ${ui} ${meta.symbol} to ${destLabel}`,
           tx: built.tx,
           watched: built.watched,
           targets: built.targets,
           route: null,
           quote: null,
-          recipient: getAddress(input.destination),
+          recipient: dest,
           policyOverride: ctx.policyOverride,
           allowMainnetSign: ctx.allowMainnetSign,
         });

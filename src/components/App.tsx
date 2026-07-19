@@ -11,6 +11,7 @@ import { ChatSidebar } from "./ChatSidebar";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { PortfolioPanel } from "./PortfolioPanel";
 import { AddressBookPanel } from "./AddressBookPanel";
+import { ApprovalsPanel } from "./ApprovalsPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { Chat } from "./Chat";
 import type { Chain, Mode } from "@/lib/types";
@@ -31,7 +32,7 @@ export function App() {
   const [drawer, setDrawer] = useState(false);
   const [signingOn, setSigningOn] = useState(false);
   const [panel, setPanel] = useState<
-    null | "portfolio" | "transactions" | "addresses" | "settings"
+    null | "portfolio" | "transactions" | "addresses" | "approvals" | "settings"
   >(null);
 
   const ctx = { chain, mode, owner: owner ?? null };
@@ -179,6 +180,7 @@ export function App() {
       {panel === "portfolio" && <PortfolioPanel onClose={() => setPanel(null)} />}
       {panel === "transactions" && <TransactionsPanel onClose={() => setPanel(null)} />}
       {panel === "addresses" && <AddressBookPanel onClose={() => setPanel(null)} />}
+      {panel === "approvals" && <ApprovalsPanel onClose={() => setPanel(null)} />}
       {panel === "settings" && <SettingsPanel onClose={() => setPanel(null)} />}
     </div>
   );

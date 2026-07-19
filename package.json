@@ -10,6 +10,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
     "proof": "tsx scripts/prove-diff-decode.ts",
     "verify:plan": "tsx scripts/verify-plan.ts",
     "proof:evm": "tsx scripts/prove-evm-diff.ts",
@@ -36,10 +37,13 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.1.6",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",

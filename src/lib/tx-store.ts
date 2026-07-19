@@ -22,8 +22,26 @@ export interface TxRecord {
   outflowUsd?: number;
   /** External destination, if any — seeds recipient screening from history. */
   recipient?: string | null;
+  /** The simulated diff, kept so we can reconcile it against reality post-confirm. */
+  predicted?: ReconcileDelta[];
+  /** Result of comparing the predicted diff to the actual on-chain movement. */
+  reconciliation?: Reconciliation;
   ts: number;
   status: TxStatus;
+}
+
+/** One asset's change, keyed by mint/contract so predicted and actual align. */
+export interface ReconcileDelta {
+  symbol: string;
+  mint: string;
+  uiDelta: number;
+  isNative: boolean;
+}
+
+export interface Reconciliation {
+  status: "matched" | "drift" | "unavailable";
+  note: string;
+  at: number;
 }
 
 const KEY = "wc-transactions-v1";
@@ -71,6 +89,15 @@ export function updateTxStatus(id: string, status: TxStatus) {
   const i = list.findIndex((r) => r.id === id);
   if (i >= 0 && list[i].status !== status) {
     list[i] = { ...list[i], status };
+    write(list);
+  }
+}
+
+export function setReconciliation(id: string, reconciliation: Reconciliation) {
+  const list = read();
+  const i = list.findIndex((r) => r.id === id);
+  if (i >= 0) {
+    list[i] = { ...list[i], reconciliation };
     write(list);
   }
 }

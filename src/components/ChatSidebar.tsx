@@ -18,12 +18,13 @@ export function ChatSidebar({
   onNew: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
-  onOpen: (panel: "portfolio" | "transactions" | "addresses" | "settings") => void;
+  onOpen: (panel: "portfolio" | "transactions" | "addresses" | "approvals" | "settings") => void;
 }) {
-  const tools: { key: "portfolio" | "transactions" | "addresses" | "settings"; icon: string; label: string }[] = [
+  const tools: { key: "portfolio" | "transactions" | "addresses" | "approvals" | "settings"; icon: string; label: string }[] = [
     { key: "portfolio", icon: "◵", label: "portfolio" },
     { key: "transactions", icon: "⇄", label: "transactions" },
     { key: "addresses", icon: "☷", label: "addresses" },
+    { key: "approvals", icon: "⊠", label: "approvals" },
     { key: "settings", icon: "⛭", label: "guardrails" },
   ];
   return (
