@@ -122,7 +122,7 @@ export function Chat({
 
   return (
     <div className="flex flex-col h-full">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto py-5 space-y-5">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden py-5 space-y-5">
         {messages.length === 0 ? (
           <EmptyState disabled={disabled} onPick={submit} suggestions={SUGGESTIONS[chain]} />
         ) : (
@@ -179,7 +179,7 @@ function MessageBlock({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[93%] sm:max-w-[86%] space-y-3 ${isUser ? "items-end" : ""}`}>
+      <div className={`max-w-[93%] sm:max-w-[86%] min-w-0 space-y-3 ${isUser ? "items-end" : ""}`}>
         {message.parts.map((part, i) => (
           <PartView key={i} part={part} isUser={isUser} />
         ))}
@@ -199,11 +199,11 @@ function PartView({
     const text = (part as { text: string }).text;
     if (!text) return null;
     return isUser ? (
-      <div className="rounded-2xl rounded-br-sm bg-haze/70 border-r-2 border-magenta/50 px-3.5 py-2.5 text-sm leading-relaxed text-ink whitespace-pre-wrap">
+      <div className="rounded-2xl rounded-br-sm bg-haze/70 border-r-2 border-magenta/50 px-3.5 py-2.5 text-sm leading-relaxed text-ink whitespace-pre-wrap break-words">
         {text}
       </div>
     ) : (
-      <div className="text-sm leading-relaxed text-ink2 whitespace-pre-wrap px-0.5">
+      <div className="text-sm leading-relaxed text-ink2 whitespace-pre-wrap break-words px-0.5">
         {text}
       </div>
     );
