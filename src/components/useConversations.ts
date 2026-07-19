@@ -9,6 +9,7 @@ import {
   newConversation,
   upsertConversation,
   deleteConversation,
+  setPinned,
   deriveTitle,
 } from "@/lib/chat-store";
 
@@ -75,6 +76,13 @@ export function useConversations() {
     setConversations(listConversations());
   }, []);
 
+  const togglePin = useCallback((id: string) => {
+    const conv = listConversations().find((c) => c.id === id);
+    if (!conv) return;
+    setPinned(id, !conv.pinned);
+    setConversations(listConversations());
+  }, []);
+
   /** Persist a conversation's messages (called when a turn completes). */
   const saveMessages = useCallback(
     (id: string, messages: UIMessage[], ctx: ChatContext) => {
@@ -109,6 +117,7 @@ export function useConversations() {
     select,
     remove,
     rename,
+    togglePin,
     saveMessages,
     refresh,
   };

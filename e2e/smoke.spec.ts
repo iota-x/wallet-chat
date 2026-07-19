@@ -6,6 +6,11 @@ import { test, expect, type Page } from "@playwright/test";
  * bad route, or a runtime crash in the verification slip that unit tests miss.
  */
 
+// Skip the first-run onboarding modal so it doesn't overlay the app under test.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("wc-onboarded-v1", "1"));
+});
+
 function trackErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
@@ -43,6 +48,16 @@ test("every operator panel opens", async ({ page }) => {
     await expect(overlay).toHaveCount(0);
   }
   expect(errors, errors.join("\n")).toEqual([]);
+});
+
+test("command palette opens and filters", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("wc-sidebar", "1"));
+  await page.goto("/app");
+  await page.getByRole("button", { name: /command menu/i }).click();
+  const input = page.getByPlaceholder(/jump to a chat/i);
+  await expect(input).toBeVisible();
+  await input.fill("portfolio");
+  await expect(page.getByRole("button", { name: /open portfolio/i })).toBeVisible();
 });
 
 test("mainnet signing toggle flips on and off", async ({ page }) => {

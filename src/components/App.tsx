@@ -21,6 +21,8 @@ import { shortAddr } from "@/lib/format";
 import { getMainnetSigning, POLICY_EVENT } from "@/lib/policy-store";
 import { notify } from "@/lib/toast";
 import { AccountChip } from "./AccountChip";
+import { CommandPalette } from "./CommandPalette";
+import { Onboarding } from "./Onboarding";
 
 const WalletMultiButton = dynamic(
   () =>
@@ -35,6 +37,7 @@ export function App() {
   useTxWatcher();
   const [drawer, setDrawer] = useState(false);
   const [signingOn, setSigningOn] = useState(false);
+  const [palette, setPalette] = useState(false);
   const [panel, setPanel] = useState<
     null | "portfolio" | "transactions" | "addresses" | "approvals" | "settings"
   >(null);
@@ -73,6 +76,18 @@ export function App() {
     return () => window.removeEventListener(POLICY_EVENT, sync);
   }, []);
 
+  // ⌘K / Ctrl-K opens the command palette.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Ensure there's an active chat once history has hydrated.
   useEffect(() => {
     if (convos.hydrated && !convos.activeId) convos.newChat(ctx);
@@ -108,6 +123,8 @@ export function App() {
       onNew={startNew}
       onSelect={selectConversation}
       onDelete={convos.remove}
+      onRename={convos.rename}
+      onTogglePin={convos.togglePin}
       onOpen={(p) => {
         setPanel(p);
         closeOnMobile();
@@ -162,6 +179,13 @@ export function App() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <StatusReadout owner={owner} chain={chain} mode={mode} signingOn={signingOn} />
+              <button
+                onClick={() => setPalette(true)}
+                aria-label="Open command menu"
+                className="hidden md:inline-flex items-center h-8 rounded-lg border border-line px-2 font-mono text-[11px] text-ink3 hover:border-magenta hover:text-ink transition-colors"
+              >
+                ⌘K
+              </button>
               <ThemeToggle />
               <ConnectArea />
             </div>
@@ -186,6 +210,17 @@ export function App() {
       {panel === "addresses" && <AddressBookPanel onClose={() => setPanel(null)} />}
       {panel === "approvals" && <ApprovalsPanel onClose={() => setPanel(null)} />}
       {panel === "settings" && <SettingsPanel onClose={() => setPanel(null)} />}
+
+      <CommandPalette
+        open={palette}
+        onClose={() => setPalette(false)}
+        conversations={history}
+        onNewChat={startNew}
+        onSelectChat={selectConversation}
+        onOpenPanel={setPanel}
+        setChain={setChain}
+      />
+      <Onboarding />
     </div>
   );
 }

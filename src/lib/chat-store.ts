@@ -15,6 +15,7 @@ export interface Conversation {
   owner: string | null;
   createdAt: number;
   updatedAt: number;
+  pinned?: boolean;
   messages: UIMessage[];
 }
 
@@ -42,7 +43,14 @@ function write(list: Conversation[]) {
 }
 
 export function listConversations(): Conversation[] {
-  return read().sort((a, b) => b.updatedAt - a.updatedAt);
+  return read().sort(
+    (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt - a.updatedAt
+  );
+}
+
+export function setPinned(id: string, pinned: boolean) {
+  const conv = read().find((c) => c.id === id);
+  if (conv) upsertConversation({ ...conv, pinned });
 }
 
 export function newConversation(ctx: {

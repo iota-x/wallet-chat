@@ -9,6 +9,38 @@ import { useModalDismiss } from "./useModalDismiss";
 
 const ALLOC_COLORS = ["#D51EA6", "#B4A4E4", "#8E97E8", "#E6A15C", "#149A63", "#8B8794"];
 
+/** SVG allocation donut — segments drawn as dash-offset arcs over a faint track. */
+function DonutRing({ segments }: { segments: { value: number; color: string }[] }) {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  const R = 15.5;
+  const C = 2 * Math.PI * R;
+  let acc = 0;
+  return (
+    <svg viewBox="0 0 40 40" className="h-16 w-16 shrink-0 -rotate-90" aria-hidden>
+      <circle cx="20" cy="20" r={R} fill="none" className="stroke-line" strokeWidth="6" />
+      {segments.map((s, i) => {
+        const f = s.value / total;
+        const dash = f * C;
+        const off = -acc * C;
+        acc += f;
+        return (
+          <circle
+            key={i}
+            cx="20"
+            cy="20"
+            r={R}
+            fill="none"
+            stroke={s.color}
+            strokeWidth="6"
+            strokeDasharray={`${dash} ${C - dash}`}
+            strokeDashoffset={off}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 export function PortfolioPanel({ onClose }: { onClose: () => void }) {
   useModalDismiss(onClose);
   const { publicKey } = useWallet();
@@ -82,27 +114,22 @@ export function PortfolioPanel({ onClose }: { onClose: () => void }) {
           )}
 
           {anyConnected && !loading && alloc.length > 0 && (
-            <div>
-              <div className="flex h-2.5 rounded-full overflow-hidden">
+            <div className="flex items-center gap-5">
+              <DonutRing
+                segments={alloc.map((l, i) => ({
+                  value: l.usd ?? 0,
+                  color: ALLOC_COLORS[i % ALLOC_COLORS.length],
+                }))}
+              />
+              <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-4 gap-y-1.5">
                 {alloc.map((l, i) => (
-                  <div
-                    key={l.mint + l.symbol}
-                    style={{
-                      width: `${((l.usd ?? 0) / (total || 1)) * 100}%`,
-                      background: ALLOC_COLORS[i % ALLOC_COLORS.length],
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
-                {alloc.map((l, i) => (
-                  <span key={l.mint + l.symbol} className="inline-flex items-center gap-1.5">
+                  <span key={l.mint + l.symbol} className="inline-flex items-center gap-1.5 min-w-0">
                     <span
-                      className="h-2 w-2 rounded-full"
+                      className="h-2 w-2 rounded-full shrink-0"
                       style={{ background: ALLOC_COLORS[i % ALLOC_COLORS.length] }}
                     />
-                    <span className="font-mono text-[11px] text-ink2">{l.symbol}</span>
-                    <span className="num text-[10px] text-ink3">
+                    <span className="font-mono text-[11px] text-ink2 truncate">{l.symbol}</span>
+                    <span className="num text-[10px] text-ink3 ml-auto">
                       {(((l.usd ?? 0) / (total || 1)) * 100).toFixed(0)}%
                     </span>
                   </span>
