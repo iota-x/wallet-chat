@@ -73,6 +73,10 @@ const config: Config = {
         },
         blink: { "0%,100%": { opacity: "1" }, "50%": { opacity: "0.25" } },
         shimmer: { "100%": { transform: "translateX(100%)" } },
+        "bloom-pulse": {
+          "0%,100%": { opacity: "0.55", transform: "scale(1)" },
+          "50%": { opacity: "0.78", transform: "scale(1.05)" },
+        },
       },
       animation: {
         "rise-in": "rise-in 0.7s cubic-bezier(0.16,1,0.3,1) both",
@@ -85,6 +89,7 @@ const config: Config = {
         "stamp-in": "stamp-in 0.45s cubic-bezier(0.34,1.56,0.64,1) both",
         blink: "blink 1.1s step-end infinite",
         shimmer: "shimmer 1.6s infinite",
+        "bloom-pulse": "bloom-pulse 11s ease-in-out infinite",
       },
     },
   },

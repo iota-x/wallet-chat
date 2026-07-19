@@ -47,61 +47,97 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="mx-auto max-w-6xl px-5 sm:px-8 pt-8 sm:pt-14 pb-20">
-      <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 items-center">
-        {/* Left — the thesis, revealed as a staggered load sequence */}
-        <div className="relative z-10">
-          <div className="eyebrow animate-rise-in" style={{ animationDelay: "0.05s" }}>
-            agentic wallet · transaction verifier
-          </div>
-          <h1 className="mt-5 font-sans font-black tracking-tight2 leading-[0.95] text-ink text-[clamp(2.7rem,8vw,5.3rem)]">
-            <span className="block animate-rise-in" style={{ animationDelay: "0.14s" }}>
-              Every
-            </span>
-            <span className="block animate-rise-in" style={{ animationDelay: "0.22s" }}>
-              transaction,
-            </span>
-            <span
-              className="block glass-text animate-rise-in"
-              style={{ animationDelay: "0.3s" }}
-            >
-              made&nbsp;transparent.
-            </span>
-          </h1>
-          <p
-            className="mt-6 max-w-md text-[15px] leading-relaxed text-ink2 animate-rise-in"
-            style={{ animationDelay: "0.44s" }}
-          >
-            State an intent in plain English. WalletChat plans it, simulates it
-            against live chain state, and shows the exact balance diff — nothing
-            signs until the guardrails pass and you arm it.
-          </p>
-          <div
-            className="mt-8 flex flex-wrap items-center gap-3 animate-rise-in"
-            style={{ animationDelay: "0.56s" }}
-          >
-            <Link
-              href="/app"
-              className="font-mono text-[13px] rounded-full bg-magenta text-paper px-6 py-3 hover:bg-ink transition-colors"
-            >
-              launch app →
-            </Link>
-            <a
-              href="#how"
-              className="font-mono text-[13px] rounded-full border border-line px-6 py-3 text-ink2 hover:border-ink transition-colors"
-            >
-              how it works
-            </a>
-          </div>
-        </div>
+    <section className="grain relative overflow-hidden">
+      {/* Atmosphere — soft lavender bloom + warm accent behind the artwork,
+          and a gentle vignette. Depth, not glow. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <div
+          className="absolute right-[2%] top-[8%] h-[64vh] w-[64vh] rounded-full blur-[120px] animate-bloom-pulse"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(180,164,228,0.4) 0%, rgba(142,151,232,0.16) 45%, transparent 70%)",
+          }}
+        />
+        <div
+          className="absolute right-[14%] top-[34%] h-[36vh] w-[36vh] rounded-full blur-[110px] opacity-70 animate-bloom-pulse"
+          style={{
+            animationDelay: "2.4s",
+            background: "radial-gradient(circle, rgba(230,161,92,0.22) 0%, transparent 66%)",
+          }}
+        />
+        <div className="absolute inset-0 vignette" />
+      </div>
 
-        {/* Right — the glass artifact (breathes, leans to your pointer), annotated */}
-        <div className="relative animate-rise-in" style={{ animationDelay: "0.2s" }}>
-          <InteractiveGlass />
-          <AnnotationLayer />
+      <div className="relative z-10 mx-auto max-w-6xl px-5 sm:px-8 pt-8 sm:pt-16 pb-24">
+        <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 items-center">
+          {/* Left — the thesis, revealed as a staggered load sequence */}
+          <div className="relative z-10">
+            <div className="eyebrow animate-rise-in" style={{ animationDelay: "0.05s" }}>
+              agentic wallet · transaction verifier
+            </div>
+            <h1 className="mt-6 font-sans font-black tracking-tight2 leading-[0.95] text-ink text-[clamp(2.7rem,8vw,5.3rem)]">
+              <span className="block animate-rise-in" style={{ animationDelay: "0.14s" }}>
+                Every
+              </span>
+              <span className="block animate-rise-in" style={{ animationDelay: "0.22s" }}>
+                transaction,
+              </span>
+              <span
+                className="block glass-text animate-rise-in"
+                style={{ animationDelay: "0.3s" }}
+              >
+                made&nbsp;transparent.
+              </span>
+            </h1>
+            <p
+              className="mt-7 max-w-md text-[15px] leading-relaxed text-ink2 animate-rise-in"
+              style={{ animationDelay: "0.44s" }}
+            >
+              State an intent in plain English. WalletChat plans it, simulates it
+              against live chain state, and shows the exact balance diff — nothing
+              signs until the guardrails pass and you arm it.
+            </p>
+            <div
+              className="mt-10 flex flex-wrap items-center gap-4 animate-rise-in"
+              style={{ animationDelay: "0.56s" }}
+            >
+              <Link
+                href="/app"
+                className="font-mono text-[13px] rounded-full bg-magenta text-paper px-6 py-3 shadow-[0_14px_44px_-12px_rgba(213,30,166,0.55)] hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-12px_rgba(213,30,166,0.72)] transition-all duration-200"
+              >
+                launch app →
+              </Link>
+              <a
+                href="#how"
+                className="font-mono text-[13px] rounded-full border border-line px-6 py-3 text-ink2 hover:border-ink hover:text-ink transition-colors"
+              >
+                how it works
+              </a>
+            </div>
+          </div>
+
+          {/* Right — the glass artifact (breathes, leans to your pointer), annotated */}
+          <div className="relative animate-rise-in" style={{ animationDelay: "0.2s" }}>
+            <ReflectedLight />
+            <InteractiveGlass />
+            <AnnotationLayer />
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+/** A soft pool of reflected light beneath the crystal, grounding it on the page. */
+function ReflectedLight() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 bottom-[4%] -translate-x-1/2 h-[14%] w-[58%] rounded-[50%] blur-2xl opacity-60 animate-bloom-pulse"
+      style={{
+        background: "radial-gradient(ellipse, rgba(180,164,228,0.5) 0%, transparent 70%)",
+      }}
+    />
   );
 }
 
