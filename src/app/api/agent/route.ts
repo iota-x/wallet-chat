@@ -13,12 +13,23 @@ import { createEvmTools } from "@/lib/agent/evm-tools";
 import { createBtcTools } from "@/lib/agent/btc-tools";
 import { resolveModel, hasModelCredential } from "@/lib/agent/model";
 import { CHAINS, networkName } from "@/lib/chains";
+import { type PolicyOverride, sanitizePolicyOverride } from "@/lib/guardrails/policy";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function systemPrompt(chain: Chain, mode: Mode): string {
+function systemPrompt(
+  chain: Chain,
+  mode: Mode,
+  addressBook: { label: string; address: string }[]
+): string {
   const meta = CHAINS[chain];
+  const bookLine =
+    addressBook.length > 0
+      ? `\n\nSaved addresses for this wallet (when the user names one, use its ADDRESS as the destination, never the label):\n${addressBook
+          .map((e) => `- ${e.label} = ${e.address}`)
+          .join("\n")}`
+      : "";
   const modeLine = modeExecutes(mode)
     ? `You are on ${networkName(chain, mode)} (the executable test tier): plans can be executed end-to-end after the user confirms and signs locally.`
     : `You are on ${meta.label} ${networkName(chain, mode)} (read-only demo): reads, quotes, simulation and the real diff are live, but signing is DISABLED. Never imply an action was executed.`;
@@ -42,22 +53,28 @@ ${swapLine}
 - If a tool returns an error, explain it plainly and suggest a fix. Never pretend a plan succeeded.
 - The native asset here is ${meta.nativeSymbol}.
 
-Style: concise and calm. One or two sentences around a plan is enough. If the intent is ambiguous (missing destination, token, or amount), ask one clarifying question instead of guessing.`;
+Style: concise and calm. One or two sentences around a plan is enough. If the intent is ambiguous (missing destination, token, or amount), ask one clarifying question instead of guessing.${bookLine}`;
 }
 
 function buildToolsForChain(
   chain: Chain,
   mode: Mode,
   owner: string,
-  ownerPublicKey?: string | null
+  ownerPublicKey: string | null | undefined,
+  policyOverride: PolicyOverride
 ) {
   if (chain === "ethereum") {
-    return createEvmTools({ mode, owner: owner as Address });
+    return createEvmTools({ mode, owner: owner as Address, policyOverride });
   }
   if (chain === "bitcoin") {
-    return createBtcTools({ mode, owner, publicKey: ownerPublicKey });
+    return createBtcTools({ mode, owner, publicKey: ownerPublicKey, policyOverride });
   }
-  return createTools({ connection: getConnection(mode), mode, owner: new PublicKey(owner) });
+  return createTools({
+    connection: getConnection(mode),
+    mode,
+    owner: new PublicKey(owner),
+    policyOverride,
+  });
 }
 
 /** Validate the owner address for the given chain, returning a normalized form. */
@@ -78,6 +95,8 @@ export async function POST(req: Request) {
     chain?: Chain;
     owner?: string;
     ownerPublicKey?: string;
+    addressBook?: { label: string; address: string }[];
+    policyOverride?: PolicyOverride;
   };
   try {
     body = await req.json();
@@ -89,6 +108,8 @@ export async function POST(req: Request) {
   const mode: Mode = body.mode === "mainnet" ? "mainnet" : "devnet";
   const chain: Chain =
     body.chain === "ethereum" || body.chain === "bitcoin" ? body.chain : "solana";
+  const addressBook = Array.isArray(body.addressBook) ? body.addressBook.slice(0, 50) : [];
+  const policyOverride = sanitizePolicyOverride(body.policyOverride);
 
   if (!body.owner) {
     return Response.json(
@@ -114,13 +135,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const tools = buildToolsForChain(chain, mode, owner, body.ownerPublicKey);
+  const tools = buildToolsForChain(chain, mode, owner, body.ownerPublicKey, policyOverride);
   const modelMessages = await convertToModelMessages(messages);
   const { model } = resolveModel();
 
   const result = streamText({
     model,
-    system: systemPrompt(chain, mode),
+    system: systemPrompt(chain, mode, addressBook),
     messages: modelMessages,
     tools,
     // Bounded loop: read → (quote) → plan, with room for a clarifying step.

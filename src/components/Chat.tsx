@@ -11,6 +11,8 @@ import { Balances } from "./Balances";
 import { CHAINS } from "@/lib/chains";
 import type { Conversation } from "@/lib/chat-store";
 import type { ChatContext } from "./useConversations";
+import { entriesForChain, ADDRESS_BOOK_EVENT } from "@/lib/address-book";
+import { getPolicyOverride, POLICY_EVENT } from "@/lib/policy-store";
 
 const SUGGESTIONS: Record<Chain, string[]> = {
   solana: [
@@ -53,13 +55,36 @@ export function Chat({
   const owner = useActiveOwner() ?? undefined;
   const ownerPublicKey = chain === "bitcoin" ? btcPublicKey ?? undefined : undefined;
 
+  // Refresh forwarded address book / guardrail settings when they change.
+  const [settingsV, setSettingsV] = useState(0);
+  useEffect(() => {
+    const h = () => setSettingsV((v) => v + 1);
+    window.addEventListener(ADDRESS_BOOK_EVENT, h);
+    window.addEventListener(POLICY_EVENT, h);
+    return () => {
+      window.removeEventListener(ADDRESS_BOOK_EVENT, h);
+      window.removeEventListener(POLICY_EVENT, h);
+    };
+  }, []);
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/agent",
-        body: { chain, mode, owner, ownerPublicKey },
+        body: {
+          chain,
+          mode,
+          owner,
+          ownerPublicKey,
+          addressBook: entriesForChain(chain).map((e) => ({
+            label: e.label,
+            address: e.address,
+          })),
+          policyOverride: getPolicyOverride(),
+        },
       }),
-    [chain, mode, owner, ownerPublicKey]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chain, mode, owner, ownerPublicKey, settingsV]
   );
 
   const { messages, sendMessage, status, error } = useChat({
@@ -133,7 +158,7 @@ export function Chat({
             placeholder={disabled ? "Connect a wallet to begin…" : "State an intent…"}
             disabled={disabled}
             aria-label="Message"
-            className="flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-ink3 max-h-40 disabled:opacity-50"
+            className="flex-1 resize-none bg-transparent py-2 text-sm outline-none focus:outline-none focus-visible:outline-none placeholder:text-ink3 max-h-40 disabled:opacity-50"
           />
           <button
             type="submit"

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   evaluateGuardrails,
+  sanitizePolicyOverride,
   DEFAULT_POLICY,
   DEFAULT_ALLOWED_PROGRAMS,
   type PolicyInput,
@@ -219,6 +220,42 @@ describe("guardrails: typed confirmation for large value", () => {
     );
     expect(r.pass).toBe(false);
     expect(r.typedConfirmation).toBeNull();
+  });
+});
+
+describe("guardrails: user policy override is sanitized", () => {
+  it("clamps out-of-range and non-numeric values", () => {
+    const o = sanitizePolicyOverride({
+      maxNotionalUsd: -50,
+      maxSlippageBps: 99999,
+      largeValueUsd: "abc",
+      quoteMaxAgeMs: 1, // below 3000 floor
+    });
+    expect(o.maxNotionalUsd).toBe(1); // clamped to min 1
+    expect(o.maxSlippageBps).toBe(5000); // clamped to max
+    expect(o.largeValueUsd).toBeUndefined(); // non-numeric dropped
+    expect(o.quoteMaxAgeMs).toBe(3000); // clamped to min
+  });
+
+  it("passes through valid values and ignores junk", () => {
+    const o = sanitizePolicyOverride({ maxNotionalUsd: 1000, nefarious: true });
+    expect(o).toEqual({ maxNotionalUsd: 1000 });
+  });
+
+  it("a tighter override blocks a plan the default would allow", () => {
+    const input: PolicyInput = {
+      mode: "devnet",
+      simulationPassed: true,
+      programIds: [SYSTEM, TOKEN],
+      diff: [{ symbol: "USDC", decimals: 6, delta: "-500000000", usd: -500, isNative: false }],
+      swap: null,
+      quote: null,
+      now: 1_000_000,
+      config: sanitizePolicyOverride({ maxNotionalUsd: 100 }),
+    };
+    const r = evaluateGuardrails(input);
+    expect(r.pass).toBe(false);
+    expect(r.checks.find((c) => c.id === "spend-cap")?.passed).toBe(false);
   });
 });
 

@@ -11,15 +11,21 @@ export function ChatSidebar({
   onNew,
   onSelect,
   onDelete,
-  onOpenTransactions,
+  onOpen,
 }: {
   conversations: Conversation[];
   activeId: string | null;
   onNew: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
-  onOpenTransactions: () => void;
+  onOpen: (panel: "portfolio" | "transactions" | "addresses" | "settings") => void;
 }) {
+  const tools: { key: "portfolio" | "transactions" | "addresses" | "settings"; icon: string; label: string }[] = [
+    { key: "portfolio", icon: "◵", label: "portfolio" },
+    { key: "transactions", icon: "⇄", label: "transactions" },
+    { key: "addresses", icon: "☷", label: "addresses" },
+    { key: "settings", icon: "⛭", label: "guardrails" },
+  ];
   return (
     <div className="h-full flex flex-col">
       <div className="p-3 space-y-2">
@@ -29,12 +35,17 @@ export function ChatSidebar({
         >
           <span className="text-sm leading-none">+</span> new chat
         </button>
-        <button
-          onClick={onOpenTransactions}
-          className="w-full flex items-center justify-center gap-2 rounded-lg border border-line text-ink2 font-mono text-[12px] py-2 hover:border-magenta hover:text-ink transition-colors"
-        >
-          ⇄ transactions
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          {tools.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => onOpen(t.key)}
+              className="flex items-center gap-1.5 rounded-lg border border-line text-ink2 font-mono text-[11px] px-2.5 py-2 hover:border-magenta hover:text-ink transition-colors"
+            >
+              <span>{t.icon}</span> {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="px-3 pb-1">

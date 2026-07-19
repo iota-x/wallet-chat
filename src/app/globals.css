@@ -170,7 +170,9 @@ body {
   animation: shimmer 1.6s infinite;
 }
 
-:focus-visible {
+/* Keyboard focus ring for interactive elements — but not text fields, which
+ * indicate focus with their own border, so they don't double up. */
+:focus-visible:not(input):not(textarea) {
   outline: 2px solid theme("colors.magenta");
   outline-offset: 2px;
   border-radius: 3px;

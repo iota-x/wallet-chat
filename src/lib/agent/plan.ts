@@ -13,7 +13,11 @@ import {
   type WatchedAsset,
 } from "@/lib/solana/simulate";
 import { extractProgramIds, computeFeeBreakdown } from "@/lib/solana/inspect";
-import { evaluateGuardrails, type PolicyDiffEntry } from "@/lib/guardrails/policy";
+import {
+  evaluateGuardrails,
+  type PolicyDiffEntry,
+  type PolicyOverride,
+} from "@/lib/guardrails/policy";
 import { getUsdPrices, usdValue } from "@/lib/pricing";
 
 /**
@@ -52,6 +56,7 @@ export interface AssembleParams {
   watchedAssets: WatchedAsset[];
   route: SwapRoute | null;
   quote: Freshness | null;
+  policyOverride?: PolicyOverride;
 }
 
 export async function assemblePlan(params: AssembleParams): Promise<Plan> {
@@ -98,6 +103,7 @@ export async function assemblePlan(params: AssembleParams): Promise<Plan> {
     swap: swapForPolicy,
     quote: params.quote,
     now: Date.now(),
+    config: params.policyOverride,
   });
 
   // 6) The single derivation of signability.

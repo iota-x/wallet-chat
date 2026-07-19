@@ -1,4 +1,5 @@
 import { tool } from "ai";
+import type { PolicyOverride } from "@/lib/guardrails/policy";
 import { z } from "zod";
 import { Connection, PublicKey } from "@solana/web3.js";
 import type { Mode } from "@/lib/types";
@@ -27,6 +28,7 @@ export interface ToolContext {
   connection: Connection;
   mode: Mode;
   owner: PublicKey;
+  policyOverride?: PolicyOverride;
 }
 
 /** Resolve a requested amount to base units against the live balance. */
@@ -164,6 +166,7 @@ export function createTools(ctx: ToolContext) {
           watchedAssets: built.watchedAssets,
           route: null,
           quote: null,
+          policyOverride: ctx.policyOverride,
         });
         return plan;
       },
@@ -236,6 +239,7 @@ export function createTools(ctx: ToolContext) {
           watchedAssets: watched,
           route,
           quote: { fetchedAt, ttlMs: 20_000 },
+          policyOverride: ctx.policyOverride,
         });
         return plan;
       },

@@ -1,4 +1,5 @@
 import { tool } from "ai";
+import type { PolicyOverride } from "@/lib/guardrails/policy";
 import { z } from "zod";
 import type { Mode, BalanceLine } from "@/lib/types";
 import { getUtxos, getFeeRates, getBtcUsdPrice } from "@/lib/btc/api";
@@ -10,6 +11,7 @@ export interface BtcToolContext {
   owner: string;
   /** Sender public key (hex) — needed to build Taproot PSBTs. */
   publicKey?: string | null;
+  policyOverride?: PolicyOverride;
 }
 
 const SATS = 100_000_000;
@@ -66,6 +68,7 @@ export function createBtcTools(ctx: BtcToolContext) {
             amountSat,
             feeRateSatVb: feeRate,
             senderPublicKey: publicKey,
+            policyOverride: ctx.policyOverride,
             intentSummary: `Send ${input.amount} BTC to ${input.destination.slice(0, 6)}…${input.destination.slice(-4)}`,
           });
         } catch (e) {

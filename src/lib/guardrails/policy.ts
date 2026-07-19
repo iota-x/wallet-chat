@@ -88,6 +88,38 @@ export const DEFAULT_POLICY: PolicyConfig = {
   nativeDecimals: 9,
 };
 
+/** The subset of the policy a user may tighten/loosen from the settings panel.
+ * The structural controls (allowlist, sim-must-pass, raw-native cap) are NOT
+ * user-editable — they are the load-bearing safety guarantees. */
+export type PolicyOverride = Partial<
+  Pick<
+    PolicyConfig,
+    "maxNotionalUsd" | "maxSlippageBps" | "largeValueUsd" | "quoteMaxAgeMs"
+  >
+>;
+
+function clamp(n: unknown, lo: number, hi: number): number | undefined {
+  const v = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(v)) return undefined;
+  return Math.max(lo, Math.min(hi, v));
+}
+
+/** Validate an untrusted override from the client into a safe partial config. */
+export function sanitizePolicyOverride(o: unknown): PolicyOverride {
+  if (!o || typeof o !== "object") return {};
+  const src = o as Record<string, unknown>;
+  const out: PolicyOverride = {};
+  const usd = clamp(src.maxNotionalUsd, 1, 1_000_000_000);
+  const slip = clamp(src.maxSlippageBps, 1, 5000);
+  const large = clamp(src.largeValueUsd, 0, 1_000_000_000);
+  const age = clamp(src.quoteMaxAgeMs, 3000, 600_000);
+  if (usd !== undefined) out.maxNotionalUsd = usd;
+  if (slip !== undefined) out.maxSlippageBps = slip;
+  if (large !== undefined) out.largeValueUsd = large;
+  if (age !== undefined) out.quoteMaxAgeMs = age;
+  return out;
+}
+
 export interface PolicyDiffEntry {
   symbol: string;
   decimals: number;

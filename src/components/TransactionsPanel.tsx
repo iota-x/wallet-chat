@@ -4,9 +4,11 @@ import React, { useEffect, useState } from "react";
 import {
   listTransactions,
   clearTransactions,
+  updateTxStatus,
   explorerUrl,
   type TxRecord,
 } from "@/lib/tx-store";
+import { checkTxStatus } from "@/lib/tx-status";
 import { CHAINS } from "@/lib/chains";
 import { shortAddr } from "@/lib/format";
 
@@ -18,10 +20,48 @@ function timeAgo(ts: number): string {
   return new Date(ts).toLocaleDateString();
 }
 
+function StatusPill({ status }: { status: TxRecord["status"] }) {
+  const map = {
+    pending: { c: "text-warn border-warn/40", t: "pending", dot: "bg-warn animate-blink" },
+    confirmed: { c: "text-pos border-pos/40", t: "confirmed", dot: "bg-pos" },
+    failed: { c: "text-neg border-neg/40", t: "failed", dot: "bg-neg" },
+  }[status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-label rounded border px-1.5 py-0.5 ${map.c}`}
+    >
+      <span className={`h-1 w-1 rounded-full ${map.dot}`} />
+      {map.t}
+    </span>
+  );
+}
+
 export function TransactionsPanel({ onClose }: { onClose: () => void }) {
   const [txns, setTxns] = useState<TxRecord[]>([]);
 
   useEffect(() => setTxns(listTransactions()), []);
+
+  // Poll pending transactions to confirmation while the panel is open.
+  useEffect(() => {
+    let cancelled = false;
+    async function tick() {
+      const pending = listTransactions().filter((t) => t.status === "pending");
+      if (pending.length === 0) return;
+      await Promise.all(
+        pending.map(async (t) => {
+          const s = await checkTxStatus(t.chain, t.mode, t.signature);
+          if (s !== "pending") updateTxStatus(t.id, s);
+        })
+      );
+      if (!cancelled) setTxns(listTransactions());
+    }
+    tick();
+    const iv = setInterval(tick, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -81,6 +121,7 @@ export function TransactionsPanel({ onClose }: { onClose: () => void }) {
                 <span className="font-mono text-[10px] text-ink3">{timeAgo(t.ts)}</span>
               </div>
               <div className="flex items-center gap-2 mt-1.5 pl-[2px]">
+                <StatusPill status={t.status} />
                 {t.delta && <span className="num text-[11px] text-ink2">{t.delta}</span>}
                 <span className="flex-1" />
                 <span className="num text-[11px] text-magenta">

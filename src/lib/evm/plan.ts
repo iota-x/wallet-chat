@@ -9,7 +9,11 @@ import type {
   EvmTxRequest,
 } from "@/lib/types";
 import { modeAllowsSigning } from "@/lib/solana/constants";
-import { evaluateGuardrails, type PolicyDiffEntry } from "@/lib/guardrails/policy";
+import {
+  evaluateGuardrails,
+  type PolicyDiffEntry,
+  type PolicyOverride,
+} from "@/lib/guardrails/policy";
 import { decodeEvmDiff, type EvmWatchedToken } from "./simulate";
 import { getEvmUsdPrices } from "./pricing";
 import { EVM_TOKENS, NATIVE_ETH, isNativeEth } from "./constants";
@@ -68,6 +72,7 @@ export interface AssembleEvmParams {
   targets: string[];
   route: SwapRoute | null;
   quote: Freshness | null;
+  policyOverride?: PolicyOverride;
 }
 
 export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> {
@@ -102,6 +107,7 @@ export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> 
       ...EVM_POLICY_OVERRIDE,
       maxSolLamports: Number(EVM_POLICY_OVERRIDE.maxSolLamports),
       largeValueLamports: Number(EVM_POLICY_OVERRIDE.largeValueLamports),
+      ...(params.policyOverride ?? {}),
     },
   });
 

@@ -1,4 +1,5 @@
 import { tool } from "ai";
+import type { PolicyOverride } from "@/lib/guardrails/policy";
 import { z } from "zod";
 import { getAddress, isAddress, type Address } from "viem";
 import type { Mode } from "@/lib/types";
@@ -18,6 +19,7 @@ import { assembleEvmPlan } from "@/lib/evm/plan";
 export interface EvmToolContext {
   mode: Mode;
   owner: Address;
+  policyOverride?: PolicyOverride;
 }
 
 async function evmBalanceOf(
@@ -107,6 +109,7 @@ export function createEvmTools(ctx: EvmToolContext) {
           targets: built.targets,
           route: null,
           quote: null,
+          policyOverride: ctx.policyOverride,
         });
       },
     }),
@@ -157,6 +160,7 @@ export function createEvmTools(ctx: EvmToolContext) {
             targets: built.targets,
             route: built.route,
             quote: { fetchedAt: built.fetchedAt, ttlMs: 20_000 },
+            policyOverride: ctx.policyOverride,
           });
         } catch (e) {
           return { error: `Swap build failed: ${(e as Error).message}` };

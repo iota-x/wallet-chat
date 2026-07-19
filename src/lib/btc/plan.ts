@@ -6,6 +6,7 @@ import type {
   GuardrailCheck,
 } from "@/lib/types";
 import { modeAllowsSigning } from "@/lib/solana/constants";
+import type { PolicyOverride } from "@/lib/guardrails/policy";
 import { buildBtcTransfer } from "./build";
 import { getBtcUsdPrice } from "./api";
 
@@ -30,7 +31,9 @@ function btcPlanId(): string {
 function evaluateBtcGuardrails(
   sendSat: number,
   feeSat: number,
-  usd: number | null
+  usd: number | null,
+  usdCap: number,
+  largeUsd: number
 ): GuardrailReport {
   const checks: GuardrailCheck[] = [];
   const outSat = sendSat + feeSat;
@@ -43,7 +46,7 @@ function evaluateBtcGuardrails(
     detail: "Coin selection succeeded; a valid PSBT was built from confirmed UTXOs.",
   });
 
-  const usdOver = usd != null && usd > 5000;
+  const usdOver = usd != null && usd > usdCap;
   const satOver = outSat > RAW_BTC_CAP_SAT;
   checks.push({
     id: "spend-cap",
@@ -52,10 +55,10 @@ function evaluateBtcGuardrails(
     passed: !usdOver && !satOver,
     detail:
       usdOver
-        ? `Blocked: ~$${usd!.toFixed(2)} exceeds cap $5000.`
+        ? `Blocked: ~$${usd!.toFixed(2)} exceeds cap $${usdCap}.`
         : satOver
           ? `Blocked: ${(outSat / SATS).toFixed(8)} BTC exceeds cap ${(RAW_BTC_CAP_SAT / SATS)} BTC.`
-          : `Outflow within cap ($5000 / ${RAW_BTC_CAP_SAT / SATS} BTC).`,
+          : `Outflow within cap ($${usdCap} / ${RAW_BTC_CAP_SAT / SATS} BTC).`,
   });
 
   const feeRatio = sendSat > 0 ? feeSat / sendSat : 1;
@@ -78,7 +81,7 @@ function evaluateBtcGuardrails(
 
   let typedConfirmation: string | null = null;
   if (pass) {
-    if (usd != null && usd >= 250) typedConfirmation = `send $${Math.round(usd)}`;
+    if (usd != null && usd >= largeUsd) typedConfirmation = `send $${Math.round(usd)}`;
     else if (outSat >= LARGE_VALUE_SAT)
       typedConfirmation = `send ${(outSat / SATS).toFixed(8).replace(/\.?0+$/, "")} BTC`;
   }
@@ -94,6 +97,7 @@ export async function assembleBtcPlan(params: {
   feeRateSatVb: number;
   intentSummary: string;
   senderPublicKey?: string | null;
+  policyOverride?: PolicyOverride;
 }): Promise<Plan> {
   const { mode, fromAddress, toAddress, amountSat, feeRateSatVb, intentSummary } =
     params;
@@ -128,7 +132,13 @@ export async function assembleBtcPlan(params: {
     },
   ];
 
-  const guardrail = evaluateBtcGuardrails(amountSat, feeSat, usdOut);
+  const guardrail = evaluateBtcGuardrails(
+    amountSat,
+    feeSat,
+    usdOut,
+    params.policyOverride?.maxNotionalUsd ?? 5000,
+    params.policyOverride?.largeValueUsd ?? 250
+  );
   const signable = guardrail.pass && modeAllowsSigning(mode);
 
   const warnings: string[] = [...guardrail.warnings];

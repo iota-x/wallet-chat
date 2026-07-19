@@ -6,6 +6,8 @@ import type { Chain, Mode, PlanKind } from "./types";
  * link. Written from PlanPreview the moment a transaction is confirmed.
  */
 
+export type TxStatus = "pending" | "confirmed" | "failed";
+
 export interface TxRecord {
   id: string;
   chain: Chain;
@@ -17,6 +19,7 @@ export interface TxRecord {
   /** e.g. "−250 USDC · +1.68 JitoSOL" */
   delta: string;
   ts: number;
+  status: TxStatus;
 }
 
 const KEY = "wc-transactions-v1";
@@ -41,11 +44,14 @@ function write(list: TxRecord[]) {
   }
 }
 
-export function recordTransaction(rec: Omit<TxRecord, "id" | "ts">) {
+export function recordTransaction(
+  rec: Omit<TxRecord, "id" | "ts" | "status"> & { status?: TxStatus }
+) {
   const list = read();
   // Avoid duplicates if a confirm callback fires twice.
   if (list.some((r) => r.signature === rec.signature)) return;
   list.unshift({
+    status: "pending",
     ...rec,
     id:
       typeof crypto !== "undefined" && crypto.randomUUID
@@ -54,6 +60,15 @@ export function recordTransaction(rec: Omit<TxRecord, "id" | "ts">) {
     ts: Date.now(),
   });
   write(list.slice(0, 200));
+}
+
+export function updateTxStatus(id: string, status: TxStatus) {
+  const list = read();
+  const i = list.findIndex((r) => r.id === id);
+  if (i >= 0 && list[i].status !== status) {
+    list[i] = { ...list[i], status };
+    write(list);
+  }
 }
 
 export function listTransactions(): TxRecord[] {

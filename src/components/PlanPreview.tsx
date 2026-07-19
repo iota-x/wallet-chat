@@ -124,6 +124,8 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
         signature,
         owner: fresh.owner,
         summary: fresh.intentSummary,
+        // Solana is awaited to confirmation above; EVM/BTC are broadcast only.
+        status: fresh.chain === "solana" ? "confirmed" : "pending",
         delta: fresh.diff
           .filter((d) => BigInt(d.delta) !== 0n)
           .slice(0, 3)

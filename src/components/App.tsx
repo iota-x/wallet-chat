@@ -9,6 +9,9 @@ import { useConversations } from "./useConversations";
 import { ThemeToggle } from "./ThemeToggle";
 import { ChatSidebar } from "./ChatSidebar";
 import { TransactionsPanel } from "./TransactionsPanel";
+import { PortfolioPanel } from "./PortfolioPanel";
+import { AddressBookPanel } from "./AddressBookPanel";
+import { SettingsPanel } from "./SettingsPanel";
 import { Chat } from "./Chat";
 import type { Chain, Mode } from "@/lib/types";
 import { CHAINS, networkName } from "@/lib/chains";
@@ -25,7 +28,9 @@ export function App() {
   const owner = useActiveOwner();
   const convos = useConversations();
   const [drawer, setDrawer] = useState(false);
-  const [txOpen, setTxOpen] = useState(false);
+  const [panel, setPanel] = useState<
+    null | "portfolio" | "transactions" | "addresses" | "settings"
+  >(null);
 
   const ctx = { chain, mode, owner: owner ?? null };
 
@@ -117,8 +122,8 @@ export function App() {
               onNew={startNew}
               onSelect={selectConversation}
               onDelete={convos.remove}
-              onOpenTransactions={() => {
-                setTxOpen(true);
+              onOpen={(p) => {
+                setPanel(p);
                 setDrawer(false);
               }}
             />
@@ -126,7 +131,10 @@ export function App() {
         </div>
       )}
 
-      {txOpen && <TransactionsPanel onClose={() => setTxOpen(false)} />}
+      {panel === "portfolio" && <PortfolioPanel onClose={() => setPanel(null)} />}
+      {panel === "transactions" && <TransactionsPanel onClose={() => setPanel(null)} />}
+      {panel === "addresses" && <AddressBookPanel onClose={() => setPanel(null)} />}
+      {panel === "settings" && <SettingsPanel onClose={() => setPanel(null)} />}
     </div>
   );
 }
