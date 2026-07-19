@@ -106,6 +106,7 @@ export async function assembleEvmPlan(params: AssembleEvmParams): Promise<Plan> 
     diff: policyDiff,
     swap: route ? { slippageBps: route.slippageBps, priceImpactPct: route.priceImpactPct } : null,
     approval,
+    recipient: params.recipient ?? null,
     quote: params.quote,
     now: Date.now(),
     config: {

@@ -39,6 +39,7 @@ import type {
   GuardrailReport,
   Mode,
 } from "@/lib/types";
+import { blocklistCheck } from "@/lib/security/blocklist";
 
 /** Program IDs the agent is permitted to touch. Anything else is a hard block. */
 export const DEFAULT_ALLOWED_PROGRAMS: string[] = [
@@ -141,6 +142,8 @@ export interface PolicyInput {
   swap: { slippageBps: number; priceImpactPct: number } | null;
   /** A token approval decoded from the calldata, if the tx grants one. */
   approval?: ApprovalInfo | null;
+  /** External transfer destination, screened against the blocklist. */
+  recipient?: string | null;
   /** Present when a time-sensitive quote backs the plan. */
   quote: { fetchedAt: number; ttlMs: number } | null;
   /** Injected clock for deterministic tests. */
@@ -228,6 +231,11 @@ export function evaluateGuardrails(input: PolicyInput): GuardrailReport {
             cfg.nativeDecimals
           )} ${cfg.nativeSymbol}).`,
   });
+
+  // 2b) blocklist — sanctioned/scam recipient or approval spender is a hard
+  // block. Reputation is invisible to a balance diff, so we screen it here.
+  const blCheck = blocklistCheck([input.recipient, input.approval?.spender]);
+  if (blCheck) checks.push(blCheck);
 
   // 3b) approval-safety — a diff sees no balance change for an approval, so we
   // gate the SPENDER (not just the token contract) and flag unlimited grants.

@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import { decodeApproval } from "@/lib/evm/approvals";
 import { screenRecipient } from "@/lib/security/recipient";
 import { rollingOutflowUsd, planOutflowUsd } from "@/lib/security/velocity";
+import { screenBlocklist, blocklistCheck } from "@/lib/security/blocklist";
 import { evaluateGuardrails, type PolicyInput } from "@/lib/guardrails/policy";
+
+// A real OFAC-sanctioned address bundled in the blocklist.
+const SANCTIONED = "0x722122df12d4e14e13ac3b6895a86e84145b6967";
 
 // ── approval decoding ────────────────────────────────────────────────────────
 
@@ -87,6 +91,44 @@ describe("guardrail: approval-safety", () => {
       input({ approval: { kind: "erc20-approve", spender: ROUTER, amount: "1000", unlimited: false, approved: true } })
     );
     expect(r.pass).toBe(true);
+  });
+});
+
+// ── blocklist ────────────────────────────────────────────────────────────────
+
+describe("blocklist", () => {
+  it("flags a sanctioned address case-insensitively", () => {
+    expect(screenBlocklist(SANCTIONED.toUpperCase())?.category).toBe("sanctioned");
+    expect(screenBlocklist("  " + SANCTIONED + "  ")).not.toBeNull();
+  });
+
+  it("passes a clean address", () => {
+    expect(screenBlocklist("0x1111111111111111111111111111111111111111")).toBeNull();
+  });
+
+  it("blocklistCheck returns null when there is nothing to screen", () => {
+    expect(blocklistCheck([null, undefined])).toBeNull();
+  });
+
+  it("blocklistCheck blocks on a hit and passes when clean", () => {
+    expect(blocklistCheck([SANCTIONED])?.passed).toBe(false);
+    expect(blocklistCheck(["0x1111111111111111111111111111111111111111"])?.passed).toBe(true);
+  });
+
+  it("guardrail blocks a transfer to a sanctioned recipient", () => {
+    const r = evaluateGuardrails({
+      mode: "mainnet",
+      simulationPassed: true,
+      programIds: [],
+      diff: [],
+      swap: null,
+      quote: null,
+      now: Date.now(),
+      recipient: SANCTIONED,
+      config: { allowedPrograms: [] },
+    });
+    expect(r.pass).toBe(false);
+    expect(r.blocking.join(" ")).toMatch(/flagged/);
   });
 });
 

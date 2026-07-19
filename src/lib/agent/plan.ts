@@ -104,6 +104,7 @@ export async function assemblePlan(params: AssembleParams): Promise<Plan> {
     programIds,
     diff: policyDiff,
     swap: swapForPolicy,
+    recipient: params.recipient ?? null,
     quote: params.quote,
     now: Date.now(),
     config: params.policyOverride,

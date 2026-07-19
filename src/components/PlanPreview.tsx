@@ -215,6 +215,11 @@ export function PlanPreview({ plan: initialPlan }: { plan: Plan }) {
               cap: security.cap,
               over: security.overCap,
             }}
+            mevTip={
+              plan.chain === "ethereum" &&
+              plan.mode === "mainnet" &&
+              plan.kind === "swap"
+            }
           />
 
           {plan.warnings.length > 0 && (
@@ -433,14 +438,16 @@ function SecurityNotices({
   recipient,
   recipientAddr,
   velocity,
+  mevTip,
 }: {
   approval: ApprovalInfo | null;
   recipient: RecipientVerdict | null;
   recipientAddr: string | null;
   velocity: { rolling: number; projected: number; cap: number; over: boolean };
+  mevTip: boolean;
 }) {
   const showVelocity = velocity.over || velocity.projected - velocity.rolling > 0;
-  if (!approval && !recipient && !showVelocity) return null;
+  if (!approval && !recipient && !showVelocity && !mevTip) return null;
 
   return (
     <section className="space-y-1.5">
@@ -486,6 +493,15 @@ function SecurityNotices({
           </span>{" "}
           of your {formatUsd(velocity.cap)} ceiling.
           {velocity.over && " Signing is blocked until the window clears or you raise the cap."}
+        </Notice>
+      )}
+
+      {mevTip && (
+        <Notice tone="muted" icon="⚡">
+          <b>MEV tip.</b> Public mainnet swaps can be sandwiched by bots. To route
+          privately, add Flashbots Protect (<span className="num">rpc.flashbots.net</span>)
+          as your wallet’s Ethereum RPC — free, and your swap won’t hit the public
+          mempool.
         </Notice>
       )}
     </section>

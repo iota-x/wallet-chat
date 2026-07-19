@@ -7,6 +7,7 @@ import type {
 } from "@/lib/types";
 import { modeAllowsSigning } from "@/lib/solana/constants";
 import type { PolicyOverride } from "@/lib/guardrails/policy";
+import { blocklistCheck } from "@/lib/security/blocklist";
 import { buildBtcTransfer } from "./build";
 import { getBtcUsdPrice } from "./api";
 
@@ -33,7 +34,8 @@ function evaluateBtcGuardrails(
   feeSat: number,
   usd: number | null,
   usdCap: number,
-  largeUsd: number
+  largeUsd: number,
+  recipient: string | null
 ): GuardrailReport {
   const checks: GuardrailCheck[] = [];
   const outSat = sendSat + feeSat;
@@ -45,6 +47,9 @@ function evaluateBtcGuardrails(
     passed: true,
     detail: "Coin selection succeeded; a valid PSBT was built from confirmed UTXOs.",
   });
+
+  const blCheck = blocklistCheck([recipient]);
+  if (blCheck) checks.push(blCheck);
 
   const usdOver = usd != null && usd > usdCap;
   const satOver = outSat > RAW_BTC_CAP_SAT;
@@ -138,7 +143,8 @@ export async function assembleBtcPlan(params: {
     feeSat,
     usdOut,
     params.policyOverride?.maxNotionalUsd ?? 5000,
-    params.policyOverride?.largeValueUsd ?? 250
+    params.policyOverride?.largeValueUsd ?? 250,
+    toAddress
   );
   const signable = guardrail.pass && modeAllowsSigning(mode, params.allowMainnetSign);
 
