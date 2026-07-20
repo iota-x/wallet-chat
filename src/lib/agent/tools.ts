@@ -79,10 +79,25 @@ export function createTools(ctx: ToolContext) {
       inputSchema: z.object({}),
       execute: async () => {
         const lines = await readBalances(connection, mode, owner);
+        // Cap the list fed to the model: a spam/whale wallet can hold thousands
+        // of SPL token accounts, and dumping them all blows the input-token
+        // budget. Lines are already USD-sorted, so keep native SOL plus the most
+        // valuable tokens and tell the model how many were omitted.
+        const MAX_TOKEN_LINES = 40;
+        const native = lines.filter((l) => l.isNative);
+        const tokens = lines.filter((l) => !l.isNative);
+        const shown = tokens.slice(0, MAX_TOKEN_LINES);
+        const hiddenTokenCount = tokens.length - shown.length;
         return {
           mode,
           owner: owner.toBase58(),
-          balances: lines,
+          balances: [...native, ...shown],
+          ...(hiddenTokenCount > 0 && {
+            truncated: {
+              hiddenTokenCount,
+              note: `Showing native SOL and the ${MAX_TOKEN_LINES} highest-value tokens; ${hiddenTokenCount} smaller or unpriced token account(s) were omitted to keep the response bounded.`,
+            },
+          }),
         };
       },
     }),
