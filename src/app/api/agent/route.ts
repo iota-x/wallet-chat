@@ -155,10 +155,25 @@ export async function POST(req: Request) {
     system: systemPrompt(chain, mode, addressBook),
     messages: modelMessages,
     tools,
+    // Cap the completion budget. Without this the provider reserves each model's
+    // full default output, and on smaller-window Groq models input+output
+    // overflows the context ("reduce the length of the messages or completion").
+    // Plans and explanations are short; 2048 is ample.
+    maxOutputTokens: 2048,
     // Bounded loop: read → (quote) → plan, with room for a clarifying step.
     // It can always terminate without producing a plan (e.g. by asking).
     stopWhen: stepCountIs(8),
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    // Mid-stream failures (a provider error on a follow-up step, a bad tool
+    // call, a rate limit) arrive as an error part on an already-200 response.
+    // The default masks them to "An error occurred." — log the real cause and
+    // surface a legible message so the chat isn't a dead end.
+    onError: (error) => {
+      console.error("[/api/agent] stream error:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      return msg || "The agent hit an error mid-response. Please try again.";
+    },
+  });
 }
