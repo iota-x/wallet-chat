@@ -348,14 +348,17 @@ function Footer() {
 }
 
 function GlassMark() {
+  // The faceted glass-bloom mark — a distilled GlassArtifact, shared with the
+  // favicon (src/app/icon.svg). Served from /public to keep its gradient IDs
+  // scoped, so they don't collide with the inline GlassArtifact on this page.
   return (
-    <span
+    // eslint-disable-next-line @next/next/no-img-element -- tiny static SVG mark; next/image adds no value and needs dangerouslyAllowSVG
+    <img
+      src="/mark.svg"
+      alt=""
+      width={24}
+      height={24}
       className="h-6 w-6 rounded-[7px] shrink-0"
-      style={{
-        background:
-          "conic-gradient(from 210deg, #C7B8F0, #8E97E8, #EBB2E4, #E6A15C, #C7B8F0)",
-        boxShadow: "inset 0 0 6px rgba(255,255,255,0.6)",
-      }}
       aria-hidden
     />
   );

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#CDBEF4"/>
+      <stop offset="34%" stop-color="#8E97E8"/>
+      <stop offset="64%" stop-color="#EBB2E4"/>
+      <stop offset="100%" stop-color="#E6A15C"/>
+    </linearGradient>
+    <linearGradient id="iris" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#EAE0FF"/>
+      <stop offset="45%" stop-color="#B9A6EC"/>
+      <stop offset="100%" stop-color="#F2C79A"/>
+    </linearGradient>
+    <linearGradient id="iris2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE7C4"/>
+      <stop offset="55%" stop-color="#F0BEE6"/>
+      <stop offset="100%" stop-color="#C9BEEA"/>
+    </linearGradient>
+    <radialGradient id="core" cx="50%" cy="46%" r="52%">
+      <stop offset="0%" stop-color="#FFEBCB" stop-opacity="0.95"/>
+      <stop offset="45%" stop-color="#F4C089" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#B9A6EC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sheen" cx="36%" cy="28%" r="55%">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.85"/>
+      <stop offset="45%" stop-color="#fff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#tile)"/>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#sheen)"/>
+  <ellipse cx="32" cy="32" rx="20" ry="18" fill="url(#core)"/>
+  <g>
+    <path d="M 32.00 20.00 L 37.20 12.50 L 32.00 5.00 L 26.80 12.50 Z" fill="url(#iris)" fill-opacity="0.5" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 38.00 21.61 L 46.25 17.71 L 45.50 8.62 L 37.25 12.51 Z" fill="url(#iris)" fill-opacity="0.34" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 42.39 26.00 L 51.49 26.75 L 55.38 18.50 L 46.29 17.75 Z" fill="url(#iris)" fill-opacity="0.5" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 44.00 32.00 L 51.50 37.20 L 59.00 32.00 L 51.50 26.80 Z" fill="url(#iris)" fill-opacity="0.34" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 42.39 38.00 L 46.29 46.25 L 55.38 45.50 L 51.49 37.25 Z" fill="url(#iris)" fill-opacity="0.5" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 38.00 42.39 L 37.25 51.49 L 45.50 55.38 L 46.25 46.29 Z" fill="url(#iris)" fill-opacity="0.34" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 32.00 44.00 L 26.80 51.50 L 32.00 59.00 L 37.20 51.50 Z" fill="url(#iris)" fill-opacity="0.5" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 26.00 42.39 L 17.75 46.29 L 18.50 55.38 L 26.75 51.49 Z" fill="url(#iris)" fill-opacity="0.34" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 21.61 38.00 L 12.51 37.25 L 8.62 45.50 L 17.71 46.25 Z" fill="url(#iris)" fill-opacity="0.5" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 20.00 32.00 L 12.50 26.80 L 5.00 32.00 L 12.50 37.20 Z" fill="url(#iris)" fill-opacity="0.34" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 21.61 26.00 L 17.71 17.75 L 8.62 18.50 L 12.51 26.75 Z" fill="url(#iris)" fill-opacity="0.5" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 26.00 21.61 L 26.75 12.51 L 18.50 8.62 L 17.75 17.71 Z" fill="url(#iris)" fill-opacity="0.34" stroke="#fff" stroke-opacity="0.35" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 34.00 28.54 L 39.69 25.47 L 39.50 19.01 L 33.81 22.07 Z" fill="url(#iris2)" fill-opacity="0.75" stroke="#fff" stroke-opacity="0.6" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 36.00 32.00 L 41.50 35.40 L 47.00 32.00 L 41.50 28.60 Z" fill="url(#iris2)" fill-opacity="0.75" stroke="#fff" stroke-opacity="0.6" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 34.00 35.46 L 33.81 41.93 L 39.50 44.99 L 39.69 38.53 Z" fill="url(#iris2)" fill-opacity="0.75" stroke="#fff" stroke-opacity="0.6" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 30.00 35.46 L 24.31 38.53 L 24.50 44.99 L 30.19 41.93 Z" fill="url(#iris2)" fill-opacity="0.75" stroke="#fff" stroke-opacity="0.6" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 28.00 32.00 L 22.50 28.60 L 17.00 32.00 L 22.50 35.40 Z" fill="url(#iris2)" fill-opacity="0.75" stroke="#fff" stroke-opacity="0.6" stroke-width="0.5" stroke-linejoin="round"/>
+    <path d="M 30.00 28.54 L 30.19 22.07 L 24.50 19.01 L 24.31 25.47 Z" fill="url(#iris2)" fill-opacity="0.75" stroke="#fff" stroke-opacity="0.6" stroke-width="0.5" stroke-linejoin="round"/>
+    <line x1="32.0" y1="23.0" x2="32.0" y2="6.0" stroke="#fff" stroke-opacity="0.5" stroke-width="0.5"/>
+    <line x1="39.8" y1="36.5" x2="54.5" y2="45.0" stroke="#fff" stroke-opacity="0.5" stroke-width="0.5"/>
+    <line x1="24.2" y1="36.5" x2="9.5" y2="45.0" stroke="#fff" stroke-opacity="0.5" stroke-width="0.5"/>
+  </g>
+  <rect x="2.5" y="2.5" width="59" height="59" rx="14.5" fill="none" stroke="#fff" stroke-opacity="0.5" stroke-width="1"/>
+</svg>
