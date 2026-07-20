@@ -22,7 +22,17 @@ const mono = IBM_Plex_Mono({
 const DESCRIPTION =
   "State an intent in plain language across Solana, Ethereum, and Bitcoin. The agent plans it, simulates against live chain state, and prints a verification slip with the exact balance diff. Nothing signs until guardrails pass and you arm it.";
 
+// Resolve relative OG/Twitter image URLs against the real origin. On Vercel,
+// VERCEL_PROJECT_PRODUCTION_URL is the stable production alias; fall back to
+// localhost for dev so scrapers get absolute URLs in production.
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "WalletChat — the transaction verifier",
   description: DESCRIPTION,
   applicationName: "WalletChat",
