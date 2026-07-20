@@ -11,6 +11,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { ChatSidebar } from "./ChatSidebar";
 import { TransactionsPanel } from "./TransactionsPanel";
 import { PortfolioPanel } from "./PortfolioPanel";
+import { PortfolioRail } from "./PortfolioRail";
 import { AddressBookPanel } from "./AddressBookPanel";
 import { ApprovalsPanel } from "./ApprovalsPanel";
 import { SettingsPanel } from "./SettingsPanel";
@@ -204,6 +205,10 @@ export function App() {
           </div>
         </main>
       </div>
+
+      {/* Persistent balances rail (xl+): keeps state on screen beside the chat, and
+          shows the trust card before a wallet is connected. */}
+      <PortfolioRail />
 
       {panel === "portfolio" && <PortfolioPanel onClose={() => setPanel(null)} />}
       {panel === "transactions" && <TransactionsPanel onClose={() => setPanel(null)} />}
