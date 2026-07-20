@@ -148,13 +148,22 @@ export async function POST(req: Request) {
     body.allowMainnetSign === true
   );
   const modelMessages = await convertToModelMessages(messages);
-  const { model } = resolveModel();
+  const { model, label } = resolveModel();
+
+  // Gemini 3 "thinks" by default, adding ~30s of latency this read→plan agent
+  // doesn't need. Set the minimum thinking level for Google models; other
+  // providers ignore the option. (thinkingLevel is the Gemini 3 knob — the API
+  // rejects setting it alongside thinkingBudget, so use only this one.)
+  const providerOptions = label.startsWith("google/")
+    ? { google: { thinkingConfig: { thinkingLevel: "low" } } }
+    : undefined;
 
   const result = streamText({
     model,
     system: systemPrompt(chain, mode, addressBook),
     messages: modelMessages,
     tools,
+    providerOptions,
     // Cap the completion budget. Without this the provider reserves each model's
     // full default output, and on smaller-window Groq models input+output
     // overflows the context ("reduce the length of the messages or completion").
